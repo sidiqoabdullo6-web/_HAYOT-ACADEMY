@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="tg" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAYOT ACADEMY</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .home-course-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      cursor: pointer;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .home-course-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--primary);
+    }
+    .home-course-cover {
+      height: 140px;
+      width: 100%;
+      overflow: hidden;
+    }
+    .home-course-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .home-course-title {
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card-circle">
+    <h2 class="auth-title" id="authScreenTitle">Login</h2>
+    <p class="auth-sub" id="authScreenSub" data-i18n="loginSubtitle">Ба ҳисоби худ ворид шавед</p>
+    
+    <form id="authFormMain">
+      <div class="auth-form-group" id="nameGroup" style="display:none;">
+        <input type="text" id="authNameInput" class="auth-input" placeholder="Ном ва насаб">
+      </div>
+      <div class="auth-form-group">
+        <input type="email" id="loginEmail" class="auth-input" placeholder="Почтаи электронӣ (Email)" required>
+      </div>
+      <div class="auth-form-group">
+        <input type="password" id="loginPassword" class="auth-input" placeholder="Парол (Password)" required>
+      </div>
+      <button type="submit" class="auth-btn" id="authSubmitBtn" data-i18n="loginButton">Ворид шудан</button>
+    </form>
+    
+    <div class="auth-toggle-text" id="authToggleText" onclick="toggleAuthMode()">
+      Ҳисоб надоред? <span id="authToggleLink">Бақайдгирӣ</span>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="logo" onclick="openPage('home')">
+      <div class="logo-icon">H</div>
+      <div class="logo-text">HAYOT <span>ACADEMY</span></div>
+    </div>
+    
+    <div class="menu-title" data-i18n="menuLearning">ОМӮЗИШ</div>
+    <button class="nav active" data-page="home"><span class="nav-icon">🏠</span> <span data-i18n="home">Асосӣ</span></button>
+    <button class="nav" data-page="courses"><span class="nav-icon">📚</span> <span data-i18n="courses">Курсҳо</span></button>
+    <button class="nav" data-page="learning"><span class="nav-icon">📖</span> <span data-i18n="myLearning">Омӯзиши ман</span></button>
+    
+    <div class="menu-title" data-i18n="menuResults">НАТИҶАҲО</div>
+    <button class="nav" data-page="progress"><span class="nav-icon">📊</span> <span data-i18n="progress">Пешрафт</span></button>
+    <button class="nav" data-page="achievements"><span class="nav-icon">🏆</span> <span data-i18n="achievements">Дастовардҳо</span></button>
+    <button class="nav" data-page="certificates"><span class="nav-icon">🎓</span> <span data-i18n="certificates">Сертификатҳо</span></button>
+    
+    <div class="menu-title" data-i18n="menuSystem">СИСТЕМА</div>
+    <button class="nav" data-page="settings"><span class="nav-icon">⚙️</span> <span data-i18n="settings">Танзимот</span></button>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="mobile-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+      <input class="search" id="search" data-i18n-placeholder="searchPlaceholder" placeholder="🔎 Ҷустуҷӯи курс ё дарс...">
+      <div class="top-actions">
+        <button class="icon-btn" id="themeButton" onclick="toggleDark()" aria-label="Theme">🌙</button>
+        <button class="icon-btn" onclick="notification()" aria-label="Notifications">🔔</button>
+        <div class="avatar-container" id="topAvatar" onclick="openProfile()">👨‍💻</div>
+      </div>
+    </header>
+
+    <!-- HOME PAGE -->
+    <section class="page active" id="home">
+      <div class="promo-hero" style="background: linear-gradient(135deg, rgba(11,16,32,0.85), rgba(21,27,46,0.9)), url('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&auto=format&fit=crop&q=80'); background-size: cover; background-position: center;">
+        <h1 data-i18n="heroTitle">🚀 Омӯзиши HTML ва CSS ба сабки FreeCodeCamp дар HAYOT ACADEMY!</h1>
+        <p data-i18n="heroText">Ояндаи худро бо HAYOT ACADEMY соз! 200 дарси HTML/CSS ва 99 тести санҷишӣ.</p>
+        <button class="primary-btn" onclick="openPage('courses')" data-i18n="viewCourses">Ҳамаи курсҳоро бибин</button>
+      </div>
+
+      <h2 class="section-title" data-i18n="featuredCourses">🔥 Курсҳои пешсаф</h2>
+      <div class="course-grid">
+        <div class="home-course-card" onclick="openCourse('HTML')">
+          <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&auto=format&fit=crop&q=80" alt="HTML"></div>
+          <div class="home-course-title">HTML Course</div>
+        </div>
+        <div class="home-course-card" onclick="openCourse('CSS')">
+          <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&auto=format&fit=crop&q=80" alt="CSS"></div>
+          <div class="home-course-title">CSS Course</div>
+        </div>
+        <div class="home-course-card" onclick="openCourse('JavaScript')">
+          <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=600&auto=format&fit=crop&q=80" alt="JavaScript"></div>
+          <div class="home-course-title">JavaScript Pro</div>
+        </div>
+        <div class="home-course-card" onclick="openCourse('Python')">
+          <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80" alt="Python"></div>
+          <div class="home-course-title">Python & AI</div>
+        </div>
+        <div class="home-course-card" onclick="openCourse('AI')">
+          <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&auto=format&fit=crop&q=80" alt="AI"></div>
+          <div class="home-course-title">Artificial Intelligence</div>
+        </div>
+        <div class="home-course-card" onclick="openCourse('Cybersecurity')">
+          <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop&q=80" alt="Cybersecurity"></div>
+          <div class="home-course-title">Cybersecurity</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COURSES PAGE -->
+    <section class="page" id="courses">
+      <h1 class="page-title" data-i18n="coursesTitle">📚 Курсҳо</h1>
+      <p class="page-subtitle" data-i18n="coursesSubtitle">Курси дилхоҳатро интихоб кун ва омӯзишро оғоз намо.</p>
+      
+      <div class="course-grid">
+        <div class="card course-card" data-search="html web development">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&auto=format&fit=crop&q=80" alt="HTML" style="width:100%;height:100%;object-fit:cover;"></div>
+          <div class="course-body">
+            <h3>HTML Course</h3>
+            <p>100 дарс + 99 такрорӣ</p>
+            <div class="course-info"><span>📖 199 дарс</span><span>⭐ 4.9</span></div>
+            <button class="open-btn" onclick="openCourse('HTML')" data-i18n="openCourse">Кушодани курс</button>
+          </div>
+        </div>
+
+        <div class="card course-card" data-search="css styling design">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&auto=format&fit=crop&q=80" alt="CSS" style="width:100%;height:100%;object-fit:cover;"></div>
+          <div class="course-body">
+            <h3>CSS Course</h3>
+            <p>200 дарс + 99 такрорӣ</p>
+            <div class="course-info"><span>📖 299 дарс</span><span>⭐ 5.0</span></div>
+            <button class="open-btn" onclick="openCourse('CSS')" data-i18n="openCourse">Кушодани курс</button>
+          </div>
+        </div>
+
+        <div class="card course-card" data-search="javascript js frontend">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=600&auto=format&fit=crop&q=80" alt="JavaScript" style="width:100%;height:100%;object-fit:cover;"></div>
+          <div class="course-body">
+            <h3>JavaScript Pro</h3>
+            <p>Modern Frontend</p>
+            <div class="course-info"><span>📖 45 дарс</span><span>⭐ 4.9</span></div>
+            <button class="open-btn" onclick="openCourse('JavaScript')" data-i18n="openCourse">Кушодани курс</button>
+          </div>
+        </div>
+
+        <div class="card course-card" data-search="python backend ai">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80" alt="Python" style="width:100%;height:100%;object-fit:cover;"></div>
+          <div class="course-body">
+            <h3>Python & AI</h3>
+            <p>Backend & Data Science</p>
+            <div class="course-info"><span>📖 50 дарс</span><span>⭐ 4.9</span></div>
+            <button class="open-btn" onclick="openCourse('Python')" data-i18n="openCourse">Кушодани курс</button>
+          </div>
+        </div>
+
+        <div class="card course-card" data-search="ai artificial intelligence">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&auto=format&fit=crop&q=80" alt="AI" style="width:100%;height:100%;object-fit:cover;"></div>
+          <div class="course-body">
+            <h3>Artificial Intelligence</h3>
+            <p>AI Foundations & Machine Learning</p>
+            <div class="course-info"><span>📖 60 дарс</span><span>⭐ 5.0</span></div>
+            <button class="open-btn" onclick="openCourse('AI')" data-i18n="openCourse">Кушодани курс</button>
+          </div>
+        </div>
+
+        <div class="card course-card" data-search="cybersecurity hacking security">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop&q=80" alt="Cybersecurity" style="width:100%;height:100%;object-fit:cover;"></div>
+          <div class="course-body">
+            <h3>Cybersecurity</h3>
+            <p>Ethical Hacking & Network Defense</p>
+            <div class="course-info"><span>📖 45 дарс</span><span>⭐ 4.9</span></div>
+            <button class="open-btn" onclick="openCourse('Cybersecurity')" data-i18n="openCourse">Кушодани курс</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MY LEARNING PAGE (Бо идоракунии динамикии пешрафт) -->
+    <section class="page" id="learning">
+      <h1 class="page-title" data-i18n="myLearning">📖 Омӯзиши ман</h1>
+      <p class="page-subtitle" data-i18n="learningSubtitle">Курсҳо ва дарсҳои оғозкардаи ту.</p>
+      <div class="learning-list" id="myLearningContainer">
+        <!-- Дар инҷо курсҳо ба таври худкор аз script.js илова мешаванд -->
+      </div>
+    </section>
+
+    <!-- PROGRESS PAGE -->
+    <section class="page" id="progress">
+      <h1 class="page-title" data-i18n="progress">📊 Пешрафт</h1>
+      <p class="page-subtitle" data-i18n="progressSubtitle">Пешрафти омӯзиши ту.</p>
+      <div class="progress-grid" id="progressContainer">
+        <!-- Пешрафтҳо ба таври динамикӣ -->
+      </div>
+    </section>
+
+    <!-- ACHIEVEMENTS PAGE -->
+    <section class="page" id="achievements">
+      <h1 class="page-title" data-i18n="achievements">🏆 Дастовардҳо</h1>
+      <p class="page-subtitle" data-i18n="achievementsSubtitle">Натиҷаҳо, XP, рейтинг ва лигаи ту.</p>
+      <div class="achievement-summary">
+        <div class="card summary-card"><div class="summary-icon">⚡</div><small>XP</small><strong id="userXpDisplay">0</strong></div>
+        <div class="card summary-card"><div class="summary-icon">⭐</div><small data-i18n="score">Балл</small><strong>100%</strong></div>
+        <div class="card summary-card"><div class="summary-icon">🔥</div><small>Streak</small><strong>1 <span data-i18n="days">рӯз</span></strong></div>
+        <div class="card summary-card"><div class="summary-icon">🏅</div><small data-i18n="rating">Рейтинг</small><strong>#1</strong></div>
+      </div>
+      <div class="card league">
+        <div class="league-icon">🥇</div>
+        <div class="league-info">
+          <h2>Gold League</h2>
+          <p data-i18n="leagueText">Ту дар байни донишҷӯёни фаъол ҳастӣ.</p>
+          <div class="progress"><div style="width:10%"></div></div>
+        </div>
+        <div class="rank"><small data-i18n="position">Ҷойгоҳ</small><strong>#1</strong></div>
+      </div>
+    </section>
+
+    <!-- CERTIFICATES PAGE -->
+    <section class="page" id="certificates">
+      <h1 class="page-title" data-i18n="certificates">🎓 Сертификатҳо</h1>
+      <p class="page-subtitle" data-i18n="certSubtitle">Сертификатҳои омӯзишии ту.</p>
+      <div class="cert-grid">
+        <div class="card certificate">
+          <div class="certificate-icon">🎓</div>
+          <h2>HAYOT ACADEMY</h2>
+          <p data-i18n="certificateCompletion">HTML & CSS Certificate</p>
+          <h3 style="margin:15px 0">HTML & CSS Master Class</h3>
+          <small>ID: HA-2026-001</small><br>
+          <button class="download-btn" onclick="downloadCertificate()" data-i18n="downloadCertificate">📥 Зеркашии сертификат</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS PAGE -->
+    <section class="page" id="settings">
+      <h1 class="page-title" data-i18n="settings">⚙️ Танзимот</h1>
+      <p class="page-subtitle" data-i18n="settingsSubtitle">Ҳисоб ва намуди HAYOT ACADEMY-ро идора кун.</p>
+      <div class="settings">
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="languageGroup">🌐 ЗАБОН</div>
+          <div class="language-card">
+            <div class="language-heading">
+              <div class="language-icon">🌐</div>
+              <div class="language-info">
+                <h3 data-i18n="chooseLanguage">Интихоби забон</h3>
+                <p data-i18n="languageDescription">Забони интерфейси HAYOT ACADEMY-ро интихоб кунед.</p>
+              </div>
+            </div>
+            <div class="custom-dropdown-container">
+              <button type="button" class="custom-dropdown-btn" id="languageButton" aria-expanded="false">
+                <span id="selectedLangText">🇹🇯 Тоҷикӣ</span>
+                <span id="languageArrow">⌄</span>
+              </button>
+              <div class="custom-dropdown-menu" id="languageMenu">
+                <button type="button" class="dropdown-item" data-lang="tg">🇹🇯 Тоҷикӣ</button>
+                <button type="button" class="dropdown-item" data-lang="ru">🇷🇺 Русский</button>
+                <button type="button" class="dropdown-item" data-lang="en">🇬🇧 English</button>
+                <button type="button" class="dropdown-item" data-lang="uz">🇺🇿 O‘zbekcha</button>
+                <button type="button" class="dropdown-item" data-lang="fa">🇮🇷 فارسی</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="accountGroup">👤 ҲИСОБ</div>
+          <div class="setting" onclick="openProfile()">
+            <div class="setting-left">
+              <div class="setting-icon">👤</div>
+              <div class="setting-text">
+                <b data-i18n="profile">Профил</b>
+                <small data-i18n="profileDescription">Ном, сурат ва маълумоти профил</small>
+              </div>
+            </div>
+            <div>›</div>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="appearanceGroup">🎨 НАМУД</div>
+          <div class="setting" onclick="toggleDark()">
+            <div class="setting-left">
+              <div class="setting-icon">🌙</div>
+              <div class="setting-text">
+                <b data-i18n="theme">Ҳолати рӯзона ва шабона</b>
+                <small data-i18n="themeDescription">Иваз кардани ранги интерфейс</small>
+              </div>
+            </div>
+            <div class="switch" id="themeSwitch"></div>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <div class="settings-group-title" data-i18n="accountGroup2">АККАУНТ</div>
+          <div class="setting" onclick="logout()" style="color:var(--red)">
+            <div class="setting-left">
+              <div class="setting-icon">🚪</div>
+              <div class="setting-text">
+                <b data-i18n="logout">Баромадан аз система</b>
+                <small data-i18n="logoutDescription">Аз ҳисоб баромадан</small>
+              </div>
+            </div>
+            <div>›</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- COURSE MODAL -->
+<div class="modal" id="courseModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <button class="back-btn" onclick="backToListOrCourse()" aria-label="Back">←</button>
+      <h2 id="courseModalTitle">Course</h2>
+    </div>
+    <div id="courseLessonsContainer">
+      <p class="muted small" style="margin-bottom:14px" data-i18n="lessonIntro">Ҳар як курс аз дарсҳои пайдарпай иборат аст.</p>
+      <div id="courseLessons"></div>
+    </div>
+    <div id="lessonRunnerContainer" style="display:none">
+      <div class="fcc-layout">
+        <div class="fcc-instructions">
+          <h3 id="runnerLessonTitle" style="color:var(--primary2);margin-bottom:10px"></h3>
+          <div id="runnerLessonDesc" class="muted small"></div>
+          <hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
+          <label class="muted small" data-i18n="exampleCode">НАМУНАИ КОД</label>
+          <code id="runnerLessonExample" style="display:block;overflow-wrap:anywhere;margin-top:8px;color:var(--editor-text)"></code>
+        </div>
+        <div class="fcc-editor-box">
+          <label class="muted small" data-i18n="codeEditor">МУҲАРРИРИ КОД</label>
+          <textarea id="codeEditor" class="fcc-textarea" data-i18n-placeholder="codePlaceholder" placeholder="Коди худро инҷо нависед..."></textarea>
+          <label class="muted small" data-i18n="preview">ПИШНАМОИШ</label>
+          <iframe id="codePreview" class="fcc-preview" title="Code preview" sandbox></iframe>
+        </div>
+      </div>
+      <button class="open-btn" style="margin-top:18px;background:var(--green)" onclick="checkCodeCompletion()" data-i18n="runCheck">Санҷиши код</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal" id="profileModal">
+  <div class="modal-box" style="max-width:600px">
+    <div class="modal-head">
+      <h2 data-i18n="profileSettings">Танзимоти профил</h2>
+      <button class="close" onclick="closeProfile()" aria-label="Close">×</button>
+    </div>
+    <div class="profile-header">
+      <div class="profile-avatar-big" id="profileAvatarBig">👨‍💻</div>
+      <div>
+        <h2 id="profileNameDisplay">Абдулло</h2>
+        <p class="muted small">Software Developer</p>
+        <p class="muted small" id="profileEmailDisplay"></p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label data-i18n="nameLabel">Ном ва насаб</label>
+      <input type="text" id="inputName" class="form-input" maxlength="60">
+    </div>
+    <div class="form-group">
+      <label data-i18n="avatarLabel">Сурати профил</label>
+      <div class="avatar-selector-grid">
+        <button type="button" class="emoji-option" onclick="setAvatarEmoji('👨‍💻')">👨‍💻</button>
+        <button type="button" class="emoji-option" onclick="setAvatarEmoji('🚀')">🚀</button>
+        <button type="button" class="emoji-option" onclick="setAvatarEmoji('💻')">💻</button>
+        <button type="button" class="emoji-option" onclick="setAvatarEmoji('⚡')">⚡</button>
+        <button type="button" class="emoji-option" onclick="setAvatarEmoji('🔥')">🔥</button>
+        <label class="upload-btn-option" title="Upload image">
+          📁<input type="file" id="imageUploadInput" accept="image/*" hidden>
+        </label>
+      </div>
+    </div>
+    <button class="open-btn" onclick="saveProfile()" data-i18n="saveProfile">Захира кардан</button>
+  </div>
+</div>
+
+<div class="custom-alert-overlay" id="customAlertOverlay">
+  <div class="custom-alert-box">
+    <div class="custom-alert-icon" id="customAlertIcon">🔔</div>
+    <div class="custom-alert-msg" id="customAlertMsg"></div>
+    <div class="custom-alert-actions" id="customAlertActions">
+      <button class="custom-alert-btn primary" id="customAlertOkBtn" onclick="hideCustomAlert()">OK</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
