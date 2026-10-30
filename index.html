@@ -3,65 +3,363 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HAYOT ACADEMY</title>
-  <link rel="stylesheet" href="style.css">
+  <title>HAYOT ACADEMY — Professional Learning Platform</title>
+
+  <!-- Firebase SDK Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
   <style>
-    .home-course-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
+    :root {
+      --bg:#0b1020;--card:#151b2e;--text:#f4f6ff;--muted:#9ba5bd;
+      --border:#27304a;--primary:#655cff;--primary2:#8179ff;
+      --soft:#222945;--accent:#ff9f43;--green:#19b87a;--red:#ef4444;
+      --editor-bg:#070a13;--editor-text:#00ffcc;
+      --shadow:0 10px 35px rgba(0,0,0,.3);
+    }
+    body.light {
+      --bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#7b8498;
+      --border:#e7eaf1;--soft:#eeeeff;--editor-bg:#1e1e2e;
+      --editor-text:#a6e3a1;--shadow:0 10px 35px rgba(40,45,90,.08);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif}
+    body{background:var(--bg);color:var(--text);min-height:100vh;transition:.25s;overflow-x:hidden}
+    button,input,textarea{font:inherit;outline:none}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+    .muted{color:var(--muted)}
+    .small{font-size:13px}
+    .primary-btn,.open-btn,.auth-btn,.download-btn{
+      background:linear-gradient(135deg,var(--primary),var(--primary2));
+      color:white;border:0;border-radius:12px;padding:12px 18px;font-weight:750;
+    }
+    .primary-btn:hover,.open-btn:hover,.download-btn:hover,.auth-btn:hover{filter:brightness(1.1)}
+
+    #pullRefreshIndicator {
+      position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+      background: transparent; border: none; padding: 6px 14px;
+      font-size: 14px; font-weight: 750; color: #3b82f6;
+      display: flex; align-items: center; gap: 8px;
+      transition: top 0.3s ease; z-index: 99999; pointer-events: none;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    }
+    .refresh-spinner {
+      display: inline-block; font-size: 20px; color: #1e3a8a;
+      animation: fastSpin 0.6s linear infinite;
+    }
+    @keyframes fastSpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #screenLockOverlay {
+      position: fixed; inset: 0; z-index: 999999;
+      background: rgba(11, 16, 32, 0.4); backdrop-filter: blur(2px);
+      display: none; pointer-events: auto; cursor: not-allowed;
+    }
+    #screenLockOverlay.active { display: block; }
+
+    #splashScreen {
+      position: fixed; inset: 0; z-index: 999999;
+      background: linear-gradient(-45deg, #0b1020, #2b237c, #655cff, #ff9f43);
+      background-size: 400% 400%;
+      animation: gradientBG 10s ease infinite;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 30px; transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .splash-logo-circle {
+      width: 90px; height: 90px; border-radius: 26px;
+      background: linear-gradient(135deg, #ffffff, #8179ff);
+      display: grid; place-items: center; font-size: 45px; font-weight: 900; color: #0b1020;
+      box-shadow: 0 0 40px rgba(255, 255, 255, 0.4);
+      margin-bottom: 15px; animation: pulseLogo 2s infinite alternate;
+    }
+    @keyframes pulseLogo {
+      from { transform: scale(0.95); box-shadow: 0 0 25px rgba(255, 255, 255, 0.3); }
+      to { transform: scale(1.06); box-shadow: 0 0 50px rgba(255, 255, 255, 0.6); }
+    }
+    .splash-title { font-size: 30px; font-weight: 900; color: #ffffff; letter-spacing: 1px; text-shadow: 0 4px 15px rgba(0,0,0,0.5); margin-bottom: 8px; }
+    .splash-slogan { font-size: 14px; font-weight: 500; color: #e2e8f0; max-width: 420px; line-height: 1.6; margin-bottom: 10px; text-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+    .splash-sub-slogan { font-size: 15px; font-weight: 700; color: #ffd166; max-width: 420px; margin-bottom: 25px; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+    .splash-timer-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden; }
+    .splash-timer-progress { height: 100%; width: 0%; background: #ffffff; animation: fillBar 10s linear forwards; }
+    @keyframes fillBar { to { width: 100%; } }
+
+    .auth-screen{
+      position:fixed;inset:0;background:var(--bg);z-index:10000;
+      display:flex;align-items:center;justify-content:center;padding:15px;overflow-y:auto;
+    }
+    .auth-card-circle{
+      width:100%;max-width:440px;min-height:460px;
+      background:radial-gradient(circle, rgba(21,27,46,0.98) 0%, rgba(11,16,32,0.99) 100%);
+      border:2px solid rgba(101,92,255,0.7);border-radius:50%;
+      padding:35px;box-shadow:0 0 60px rgba(101,92,255,0.4), var(--shadow);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;position:relative;overflow:hidden;margin:auto;
+    }
+    .auth-title{font-size:24px;font-weight:800;margin-bottom:2px;color:#ffffff;text-shadow:0 0 10px rgba(101,92,255,0.8)}
+    .auth-sub{color:#d0d8ef;font-size:12px;margin-bottom:15px;font-weight:600}
+    .auth-form-group{width:100%;max-width:260px;text-align:start;margin-bottom:8px}
+    .auth-input{
+      width:100%;padding:10px 14px;border:1.5px solid var(--primary2);border-radius:20px;
+      background:rgba(7,10,19,0.95);color:#ffffff !important;font-size:14px;font-weight:600;text-align:center;
+    }
+    .auth-input::placeholder{color:#a5b4fc;opacity:0.8;}
+    .auth-btn{
+      width:100%;max-width:260px;margin-top:10px;padding:11px;border-radius:20px;
+      background:linear-gradient(135deg,var(--primary),var(--accent));font-size:14px;font-weight:bold;color:#ffffff;
+    }
+
+    .app{min-height:100vh}
+    .sidebar{position:fixed;inset:0 auto 0 0;width:255px;background:var(--card);border-right:1px solid var(--border);padding:20px 15px;z-index:100;overflow-y:auto;transition:transform .25s}
+    .logo{display:flex;align-items:center;gap:12px;padding:5px 10px 25px;cursor:pointer}
+    .logo-icon{width:44px;height:44px;border-radius:14px;font-size:22px;display:grid;place-items:center;color:white;font-weight:900;background:linear-gradient(135deg,var(--primary),var(--accent))}
+    .logo-text{font-size:15px;font-weight:900;letter-spacing:.4px}
+    .logo-text span{color:var(--primary2)}
+    .menu-title{font-size:10px;color:var(--muted);font-weight:800;margin:19px 10px 8px;letter-spacing:1px;text-transform:uppercase}
+    .nav{display:flex;align-items:center;gap:13px;width:100%;padding:12px 14px;margin:4px 0;border:0;border-radius:12px;background:transparent;color:var(--muted);text-align:start;font-size:14px}
+    .nav:hover{background:var(--soft);color:var(--primary2)}
+    .nav.active{background:linear-gradient(135deg,var(--primary),var(--primary2));color:white;font-weight:750}
+    .nav-icon{font-size:18px}
+    .main{margin-left:255px;min-height:100vh;padding-bottom:40px;position:relative}
+    .topbar{height:72px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 25px;position:sticky;top:0;z-index:50;gap:15px}
+    .search{width:min(350px,45%);padding:12px 16px;border:1px solid var(--border);border-radius:13px;background:var(--bg);color:var(--text)}
+    .top-actions{display:flex;align-items:center;gap:10px}
+
+    .icon-btn{width:41px;height:41px;border:1px solid var(--border);border-radius:12px;background:var(--card);color:var(--text);font-size:17px}
+    .avatar-container{width:42px;height:42px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--primary),var(--accent));display:grid;place-items:center;color:white;font-weight:800;cursor:pointer;border:2px solid var(--primary2)}
+    .mobile-btn{display:none;background:none;border:0;color:var(--text);font-size:25px}
+    
+    .page{display:none;padding:28px;animation:fade .2s ease}
+    .page.active{display:block}
+    
+    .page.chat-page { 
+      display: none; 
+      padding: 24px; 
+      height: calc(100vh - 72px); 
+      box-sizing: border-box; 
+    }
+    .page.chat-page.active { 
+      display: flex; 
+      flex-direction: column; 
+    }
+
+    @keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+    
+    .section-header-row { display: flex; align-items: center; gap: 15px; margin-bottom: 8px; flex-shrink: 0; }
+    .back-page-btn {
+      background: linear-gradient(135deg, var(--soft), var(--border));
+      color: var(--text); border: 1.5px solid var(--primary2);
+      width: 44px; height: 40px; border-radius: 12px; font-weight: 900; font-size: 20px;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .page-title{font-size:27px;font-weight:850;margin-bottom:0}
+    .page-subtitle{color:var(--muted);margin-bottom:15px;font-size:14px;line-height:1.6;flex-shrink:0}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:19px;box-shadow:var(--shadow)}
+
+    .promo-hero{
+      background: linear-gradient(135deg, rgba(43,35,124,0.85), rgba(21,27,46,0.92)), url('https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=1200&auto=format&fit=crop&q=80') center/cover no-repeat;
+      border:1px solid rgba(101,92,255,.35);color:#fff;border-radius:23px;padding:38px;margin-bottom:28px;box-shadow:var(--shadow);
+    }
+    .promo-hero h1{font-size:clamp(24px,3vw,34px);line-height:1.35;margin-bottom:13px}
+    .promo-hero p{opacity:.95;max-width:680px;font-size:14px;line-height:1.8;margin-bottom:23px}
+    .section-title{font-size:21px;font-weight:800;margin-bottom:17px}
+
+    .home-course-card{
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      overflow: hidden; display: flex; flex-direction: column; cursor: pointer; transition: 0.25s;
+    }
+    .home-course-card:hover{transform: translateY(-5px); border-color: var(--primary);}
+    .home-course-cover{height: 150px; width: 100%; overflow: hidden;}
+    .home-course-cover img{width: 100%; height: 100%; object-fit: cover;}
+    .home-course-title{padding: 16px; font-size: 17px; font-weight: 700; text-align: center;}
+    .course-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+
+    .course-card{overflow:hidden;display:flex;flex-direction:column}
+    .course-cover{height:120px;background:var(--soft);display:grid;place-items:center}
+    .course-cover img{width:100%;height:100%;object-fit:cover}
+    .course-body{padding:19px;display:flex;flex-direction:column;flex:1}
+    .course-body h3{font-size:17px;margin-bottom:7px}
+    .course-body p{color:var(--muted);font-size:13px}
+    .course-info{display:flex;justify-content:space-between;gap:8px;margin:16px 0;color:var(--muted);font-size:12px}
+    .open-btn{width:100%;margin-top:auto}
+
+    .learning-list{display:grid;gap:15px}
+    .learning-card{padding:18px;display:flex;align-items:center;gap:17px;cursor:pointer}
+    .learning-icon{width:62px;height:62px;flex-shrink:0;border-radius:15px;display:grid;place-items:center;font-size:30px;background:var(--soft)}
+    .learning-info{flex:1;min-width:0}
+    .learning-info h3{font-size:17px;margin-bottom:6px}
+    .learning-info p{font-size:13px;color:var(--muted);margin-bottom:10px}
+    .progress{height:8px;background:var(--border);border-radius:10px;overflow:hidden}
+    .progress div{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:10px}
+    .progress-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .progress-card{padding:22px}
+    .progress-row{margin-top:17px}
+    .progress-row-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px}
+    .progress-row-head span{color:var(--muted)}
+    .achievement-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+    .summary-card{padding:20px;text-align:center}
+    .summary-icon{font-size:28px;margin-bottom:8px}
+    .summary-card small{color:var(--muted);font-size:12px}
+    .summary-card strong{display:block;font-size:23px;margin-top:6px;color:var(--primary2)}
+    .cert-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .certificate{padding:28px;text-align:center;border:2px solid var(--primary);background:linear-gradient(135deg,var(--card),var(--soft))}
+    .certificate-icon{font-size:45px;margin-bottom:10px}
+    .certificate h2{color:var(--primary2);margin:10px 0}
+    .certificate p{color:var(--muted);font-size:13px}
+    .download-btn{margin-top:18px}
+
+    .chat-box-card {
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 20px; 
+      position: relative; 
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      cursor: pointer;
-      transition: transform 0.2s, border-color 0.2s;
+      min-height: 0;
     }
-    .home-course-card:hover {
-      transform: translateY(-3px);
-      border-color: var(--primary);
+
+    .msg-bubble { padding: 10px 14px; border-radius: 12px; max-width: 75%; word-break: break-word; line-height: 1.4; position: relative; cursor: pointer; }
+    .msg-bubble.me { background: var(--primary); color: #fff; align-self: flex-end; }
+    .msg-bubble.other { background: var(--soft); color: var(--text); align-self: flex-start; border: 1px solid var(--border); }
+    .msg-time { font-size: 10px; color: var(--muted); margin-top: 4px; text-align: right; }
+
+    .msg-context-menu { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); display: none; z-index: 999; flex-direction: column; padding: 6px; }
+    .msg-context-menu button { background: none; border: none; color: var(--text); padding: 8px 12px; text-align: left; font-size: 12px; cursor: pointer; border-radius: 6px; }
+    .msg-context-menu button:hover { background: var(--soft); color: var(--primary2); }
+
+    .reply-bar { background: var(--soft); padding: 6px 12px; font-size: 11px; display: none; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+
+    .send-plane-btn {
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      color: white; border: none; width: 46px; height: 46px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+      cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(101,92,255,0.4); flex-shrink: 0;
     }
-    .home-course-cover {
-      height: 140px;
-      width: 100%;
-      overflow: hidden;
+    .send-plane-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+
+    .custom-select-wrapper { position: relative; width: 100%; user-select: none; }
+    .custom-select-trigger {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; padding: 12px 16px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--card); color: var(--text);
+      font-size: 14px; font-weight: 600; cursor: pointer;
     }
-    .home-course-cover img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .custom-options {
+      position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+      background: var(--card); border: 1.5px solid var(--primary2); border-radius: 16px;
+      box-shadow: var(--shadow); overflow: hidden; display: none; z-index: 100;
     }
-    .home-course-title {
-      padding: 14px;
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--text);
-      text-align: center;
+    .custom-options.open { display: block; }
+    .custom-option {
+      display: flex; align-items: center; gap: 12px; padding: 13px 18px;
+      font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+    .custom-option:hover { background: var(--soft); color: var(--primary2); }
+
+    .modal{position:fixed;inset:0;background:rgba(5,8,18,.82);backdrop-filter:blur(9px);display:none;align-items:center;justify-content:center;z-index:500;padding:15px}
+    .modal.show{display:flex}
+    .modal-box{width:100%;max-width:930px;max-height:92vh;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:22px;padding:25px;box-shadow:var(--shadow)}
+
+    #courseModal {
+      position: fixed !important; top: 0 !important; left: 0 !important;
+      width: 100vw !important; height: 100vh !important; max-width: 100% !important; max-height: 100% !important;
+      border-radius: 0 !important; z-index: 9999 !important; padding: 15px !important;
+    }
+    #courseModal.show { display: flex !important; flex-direction: column !important; }
+    #courseModal .modal-box {
+      width: 100% !important; height: 100% !important; max-width: 100% !important; max-height: 100% !important;
+      border-radius: 0 !important; border: none !important; display: flex; flex-direction: column;
+    }
+
+    .modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px}
+    .modal-head h2{font-size:19px}
+    
+    .back-btn{
+      background: linear-gradient(135deg, var(--soft), var(--border));
+      color: var(--text); border: 1.5px solid var(--primary2);
+      width: 48px; height: 44px; border-radius: 12px; font-weight: 900; font-size: 22px;
+      display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .close{background:none;border:0;color:var(--muted);font-size:29px}
+    
+    .modal-lesson{padding:14px;border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:9px 0;background:var(--bg)}
+    .modal-lesson.locked{opacity: 0.6; cursor: not-allowed; border-color: rgba(239, 68, 68, 0.3);}
+    .modal-lesson button{background:var(--primary);color:white;border:0;border-radius:9px;padding:9px 13px;flex-shrink:0}
+    .modal-lesson.locked button{background: var(--muted); cursor: not-allowed;}
+
+    .fcc-layout{display:flex;flex-direction:column;gap:16px;margin-top:15px}
+    .fcc-instructions{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:18px;font-size:14px;line-height:1.8}
+    
+    .example-code-box {
+      background: var(--editor-bg); color: var(--editor-text);
+      border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+      font-family: monospace; font-size: 14px; white-space: pre-wrap; word-break: break-all;
+      max-height: 180px; overflow-y: auto; margin-top: 6px;
+    }
+
+    .fcc-editor-box{display:flex;flex-direction:column;gap:9px}
+    .fcc-textarea{width:100%;height:180px;background:var(--editor-bg);color:var(--editor-text);border:1px solid var(--border);border-radius:12px;padding:14px;font-family:monospace;font-size:14px;resize:vertical}
+    
+    .fcc-preview{border:1px solid var(--border);border-radius:12px;height:140px;background:#fff;color:#111;padding:12px;overflow:auto}
+
+    .form-group{margin-bottom:15px}
+    .form-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text)}
+    .profile-header{display:flex;align-items:center;gap:17px;padding:17px;background:var(--bg);border-radius:14px;margin-bottom:18px}
+    .profile-avatar-big{width:70px;height:70px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));display:grid;place-items:center;color:white;font-size:29px}
+
+    .custom-alert-overlay{position:fixed;inset:0;background:rgba(5,8,18,.92);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;z-index:99999}
+    .custom-alert-overlay.show{display:flex}
+    .custom-alert-box{width:100vw !important;height:100vh !important;background:var(--card);border:none !important;border-radius:0 !important;padding:20px;display:flex;flex-direction:column;box-sizing:border-box;}
+
+    @media(max-width:1050px){.course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.achievement-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:768px){
+      .sidebar{transform:translateX(-100%);box-shadow:var(--shadow)}
+      .sidebar.open{transform:translateX(0)}
+      .main{margin-left:0}.mobile-btn{display:block}
+      .topbar{padding:0 13px;gap:9px}.search{width:100%;font-size:12px}
+      .page{padding:19px 14px}
+      .page.chat-page { padding: 12px; height: calc(100vh - 72px); }
+      .course-grid,.progress-grid,.cert-grid{grid-template-columns:1fr}
     }
   </style>
 </head>
-<body>
+<body dir="ltr">
 
+<div id="screenLockOverlay"></div>
+
+<!-- SPLASH SCREEN -->
+<div id="splashScreen">
+  <div class="splash-logo-circle">H</div>
+  <h1 class="splash-title">HAYOT ACADEMY</h1>
+  <p class="splash-slogan" data-i18n="splashSlogan">HAYOT ACADEMY — платформаи онлайн барои омӯзиши барномасозӣ бо забони тоҷикӣ, русӣ, англисӣ ва эронӣ мебошад.</p>
+  <p class="splash-sub-slogan">"Ояндаро бо забони худ биомуз"</p>
+  <div class="splash-timer-bar">
+    <div class="splash-timer-progress"></div>
+  </div>
+</div>
+
+<!-- AUTH SCREEN -->
 <div class="auth-screen" id="authScreen">
   <div class="auth-card-circle">
-    <h2 class="auth-title" id="authScreenTitle">Login</h2>
-    <p class="auth-sub" id="authScreenSub" data-i18n="loginSubtitle">Ба ҳисоби худ ворид шавед</p>
-    
+    <h2 class="auth-title">HAYOT ACADEMY</h2>
+    <p class="auth-sub" data-i18n="authSub">Бақайдгирии ном ва PIN-коди 4-рақама</p>
     <form id="authFormMain">
-      <div class="auth-form-group" id="nameGroup" style="display:none;">
-        <input type="text" id="authNameInput" class="auth-input" placeholder="Ном ва насаб">
+      <div class="auth-form-group">
+        <input type="text" id="loginName" class="auth-input" placeholder="Ному насаби шумо" required>
       </div>
       <div class="auth-form-group">
-        <input type="email" id="loginEmail" class="auth-input" placeholder="Почтаи электронӣ (Email)" required>
+        <input type="password" id="loginPin" class="auth-input" maxlength="4" placeholder="PIN (4 рақам)" required>
+        <div class="auth-hint" style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px;" data-i18n="pinHint">Рақами махфии худро гузоред</div>
       </div>
-      <div class="auth-form-group">
-        <input type="password" id="loginPassword" class="auth-input" placeholder="Парол (Password)" required>
-      </div>
-      <button type="submit" class="auth-btn" id="authSubmitBtn" data-i18n="loginButton">Ворид шудан</button>
+      <button type="submit" class="auth-btn" data-i18n="authBtn">Бақайдгирӣ ва Воридшавӣ</button>
     </form>
-    
-    <div class="auth-toggle-text" id="authToggleText" onclick="toggleAuthMode()">
-      Ҳисоб надоред? <span id="authToggleLink">Бақайдгирӣ</span>
-    </div>
   </div>
 </div>
 
@@ -72,40 +370,48 @@
       <div class="logo-text">HAYOT <span>ACADEMY</span></div>
     </div>
     
-    <div class="menu-title" data-i18n="menuLearning">ОМӮЗИШ</div>
-    <button class="nav active" data-page="home"><span class="nav-icon">🏠</span> <span data-i18n="home">Асосӣ</span></button>
-    <button class="nav" data-page="courses"><span class="nav-icon">📚</span> <span data-i18n="courses">Курсҳо</span></button>
-    <button class="nav" data-page="learning"><span class="nav-icon">📖</span> <span data-i18n="myLearning">Омӯзиши ман</span></button>
+    <div class="menu-title" data-i18n="menuStudy">ОМӮЗИШ</div>
+    <button class="nav active" data-page="home" onclick="openPage('home')"><span class="nav-icon">🏠</span> <span data-i18n="navHome">Асосӣ</span></button>
+    <button class="nav" data-page="courses" onclick="openPage('courses')"><span class="nav-icon">📚</span> <span data-i18n="navCourses">Курсҳо</span></button>
+    <button class="nav" data-page="learning" onclick="openPage('learning')"><span class="nav-icon">📖</span> <span data-i18n="navLearning">Омӯзиши ман</span></button>
+
+    <div class="menu-title" data-i18n="menuComm">МУҲОКИМА ВА АЛОҚА</div>
+    <button class="nav" data-page="groupchat" onclick="openPage('groupchat')"><span class="nav-icon">💬</span> <span data-i18n="navGroupChat">Чати гурӯҳӣ</span></button>
+    <button class="nav" data-page="teachercontact" onclick="openPage('teachercontact')"><span class="nav-icon">👨‍🏫</span> <span data-i18n="navTeacher">Тамос бо устод</span></button>
+    <button class="nav" data-page="adminvideos" onclick="openPage('adminvideos')"><span class="nav-icon">🎬</span> <span data-i18n="navAdminVideos">Видеодарсҳои Админ</span></button>
     
     <div class="menu-title" data-i18n="menuResults">НАТИҶАҲО</div>
-    <button class="nav" data-page="progress"><span class="nav-icon">📊</span> <span data-i18n="progress">Пешрафт</span></button>
-    <button class="nav" data-page="achievements"><span class="nav-icon">🏆</span> <span data-i18n="achievements">Дастовардҳо</span></button>
-    <button class="nav" data-page="certificates"><span class="nav-icon">🎓</span> <span data-i18n="certificates">Сертификатҳо</span></button>
+    <button class="nav" data-page="progress" onclick="openPage('progress')"><span class="nav-icon">📊</span> <span data-i18n="navProgress">Пешрафт</span></button>
+    <button class="nav" data-page="achievements" onclick="openPage('achievements')"><span class="nav-icon">🏆</span> <span data-i18n="navAchievements">Дастовардҳо</span></button>
+    <button class="nav" data-page="certificates" onclick="openPage('certificates')"><span class="nav-icon">🎓</span> <span data-i18n="navCertificates">Сертификатҳо</span></button>
     
     <div class="menu-title" data-i18n="menuSystem">СИСТЕМА</div>
-    <button class="nav" data-page="settings"><span class="nav-icon">⚙️</span> <span data-i18n="settings">Танзимот</span></button>
+    <button class="nav" data-page="settings" onclick="openPage('settings')"><span class="nav-icon">⚙️</span> <span data-i18n="navSettings">Танзимот</span></button>
   </aside>
 
-  <main class="main">
+  <main class="main" id="mainContentArea">
+    <div id="pullRefreshIndicator"><span class="refresh-spinner">🔄</span> <span id="refreshText">Аз боло ба поён кашед...</span></div>
+
     <header class="topbar">
-      <button class="mobile-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
-      <input class="search" id="search" data-i18n-placeholder="searchPlaceholder" placeholder="🔎 Ҷустуҷӯи курс ё дарс...">
+      <button class="mobile-btn" onclick="toggleSidebar()">☰</button>
+      <input class="search" id="search" placeholder="🔎 Ҷустуҷӯи курс ё дарс..." data-i18n-ph="searchPh">
+      
       <div class="top-actions">
-        <button class="icon-btn" id="themeButton" onclick="toggleDark()" aria-label="Theme">🌙</button>
-        <button class="icon-btn" onclick="notification()" aria-label="Notifications">🔔</button>
+        <button class="icon-btn" id="themeButton" onclick="toggleDark()">🌙</button>
+        <button class="icon-btn" onclick="notification()">🔔</button>
         <div class="avatar-container" id="topAvatar" onclick="openProfile()">👨‍💻</div>
       </div>
     </header>
 
-    <!-- HOME PAGE -->
-    <section class="page active" id="home">
-      <div class="promo-hero" style="background: linear-gradient(135deg, rgba(11,16,32,0.85), rgba(21,27,46,0.9)), url('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&auto=format&fit=crop&q=80'); background-size: cover; background-position: center;">
-        <h1 data-i18n="heroTitle">🚀 Омӯзиши HTML ва CSS ба сабки FreeCodeCamp дар HAYOT ACADEMY!</h1>
-        <p data-i18n="heroText">Ояндаи худро бо HAYOT ACADEMY соз! 200 дарси HTML/CSS ва 99 тести санҷишӣ.</p>
-        <button class="primary-btn" onclick="openPage('courses')" data-i18n="viewCourses">Ҳамаи курсҳоро бибин</button>
+    <!-- 1. HOME PAGE -->
+    <section class="page" id="home">
+      <div class="promo-hero">
+        <h1 data-i18n="heroTitle">🚀 Омӯзиши Касбии Барномасозӣ дар HAYOT ACADEMY!</h1>
+        <p data-i18n="heroDesc">Ояндаи худро бо таълими муосир ва амалӣ соз!</p>
+        <button class="primary-btn" onclick="openPage('courses')" data-i18n="heroBtn">Ҳамаи курсҳоро бибин</button>
       </div>
 
-      <h2 class="section-title" data-i18n="featuredCourses">🔥 Курсҳои пешсаф</h2>
+      <h2 class="section-title" data-i18n="topCourses">🔥 Курсҳои пешсаф</h2>
       <div class="course-grid">
         <div class="home-course-card" onclick="openCourse('HTML')">
           <div class="home-course-cover"><img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&auto=format&fit=crop&q=80" alt="HTML"></div>
@@ -134,200 +440,244 @@
       </div>
     </section>
 
-    <!-- COURSES PAGE -->
+    <!-- 2. COURSES PAGE -->
     <section class="page" id="courses">
-      <h1 class="page-title" data-i18n="coursesTitle">📚 Курсҳо</h1>
-      <p class="page-subtitle" data-i18n="coursesSubtitle">Курси дилхоҳатро интихоб кун ва омӯзишро оғоз намо.</p>
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="coursesTitle">📚 Курсҳо</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="coursesSub">Курси дилхоҳатро интихоб кун ва омӯзишро оғоз намо.</p>
       
       <div class="course-grid">
-        <div class="card course-card" data-search="html web development">
-          <div class="course-cover"><img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&auto=format&fit=crop&q=80" alt="HTML" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="card course-card" onclick="openCourse('HTML')">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=600&auto=format&fit=crop&q=80" alt="HTML"></div>
           <div class="course-body">
             <h3>HTML Course</h3>
-            <p>100 дарс + 99 такрорӣ</p>
-            <div class="course-info"><span>📖 199 дарс</span><span>⭐ 4.9</span></div>
-            <button class="open-btn" onclick="openCourse('HTML')" data-i18n="openCourse">Кушодани курс</button>
+            <p data-i18n="htmlDesc">199 дарс ва тестҳо</p>
+            <div class="course-info"><span data-i18n="stepByStep">📖 Шаг ба шаг</span><span>⭐ 5.0</span></div>
+            <button class="open-btn" data-i18n="openCourseBtn">Кушодани курс</button>
           </div>
         </div>
-
-        <div class="card course-card" data-search="css styling design">
-          <div class="course-cover"><img src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&auto=format&fit=crop&q=80" alt="CSS" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="card course-card" onclick="openCourse('CSS')">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=600&auto=format&fit=crop&q=80" alt="CSS"></div>
           <div class="course-body">
             <h3>CSS Course</h3>
-            <p>200 дарс + 99 такрорӣ</p>
-            <div class="course-info"><span>📖 299 дарс</span><span>⭐ 5.0</span></div>
-            <button class="open-btn" onclick="openCourse('CSS')" data-i18n="openCourse">Кушодани курс</button>
+            <p data-i18n="cssDesc">210 дарс ва тестҳо</p>
+            <div class="course-info"><span data-i18n="stepByStep">📖 Шаг ба шаг</span><span>⭐ 5.0</span></div>
+            <button class="open-btn" data-i18n="openCourseBtn">Кушодани курс</button>
           </div>
         </div>
-
-        <div class="card course-card" data-search="javascript js frontend">
-          <div class="course-cover"><img src="https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=600&auto=format&fit=crop&q=80" alt="JavaScript" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="card course-card" onclick="openCourse('JavaScript')">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=600&auto=format&fit=crop&q=80" alt="JavaScript"></div>
           <div class="course-body">
             <h3>JavaScript Pro</h3>
-            <p>Modern Frontend</p>
-            <div class="course-info"><span>📖 45 дарс</span><span>⭐ 4.9</span></div>
-            <button class="open-btn" onclick="openCourse('JavaScript')" data-i18n="openCourse">Кушодани курс</button>
+            <p data-i18n="jsDesc">210 дарс ва тестҳо</p>
+            <div class="course-info"><span data-i18n="stepByStep">📖 Шаг ба шаг</span><span>⭐ 4.9</span></div>
+            <button class="open-btn" data-i18n="openCourseBtn">Кушодани курс</button>
           </div>
         </div>
-
-        <div class="card course-card" data-search="python backend ai">
-          <div class="course-cover"><img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80" alt="Python" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="card course-card" onclick="openCourse('Python')">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80" alt="Python"></div>
           <div class="course-body">
             <h3>Python & AI</h3>
-            <p>Backend & Data Science</p>
-            <div class="course-info"><span>📖 50 дарс</span><span>⭐ 4.9</span></div>
-            <button class="open-btn" onclick="openCourse('Python')" data-i18n="openCourse">Кушодани курс</button>
+            <p data-i18n="pyDesc">419 дарс ва тестҳо</p>
+            <div class="course-info"><span data-i18n="stepByStep">📖 Шаг ба шаг</span><span>⭐ 4.9</span></div>
+            <button class="open-btn" data-i18n="openCourseBtn">Кушодани курс</button>
           </div>
         </div>
-
-        <div class="card course-card" data-search="ai artificial intelligence">
-          <div class="course-cover"><img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&auto=format&fit=crop&q=80" alt="AI" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="card course-card" onclick="openCourse('AI')">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=600&auto=format&fit=crop&q=80" alt="AI"></div>
           <div class="course-body">
             <h3>Artificial Intelligence</h3>
-            <p>AI Foundations & Machine Learning</p>
-            <div class="course-info"><span>📖 60 дарс</span><span>⭐ 5.0</span></div>
-            <button class="open-btn" onclick="openCourse('AI')" data-i18n="openCourse">Кушодани курс</button>
+            <p data-i18n="aiDesc">349 дарс ва тестҳо</p>
+            <div class="course-info"><span data-i18n="stepByStep">📖 Шаг ба шаг</span><span>⭐ 5.0</span></div>
+            <button class="open-btn" data-i18n="openCourseBtn">Кушодани курс</button>
           </div>
         </div>
-
-        <div class="card course-card" data-search="cybersecurity hacking security">
-          <div class="course-cover"><img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop&q=80" alt="Cybersecurity" style="width:100%;height:100%;object-fit:cover;"></div>
+        <div class="card course-card" onclick="openCourse('Cybersecurity')">
+          <div class="course-cover"><img src="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&auto=format&fit=crop&q=80" alt="Cybersecurity"></div>
           <div class="course-body">
             <h3>Cybersecurity</h3>
-            <p>Ethical Hacking & Network Defense</p>
-            <div class="course-info"><span>📖 45 дарс</span><span>⭐ 4.9</span></div>
-            <button class="open-btn" onclick="openCourse('Cybersecurity')" data-i18n="openCourse">Кушодани курс</button>
+            <p data-i18n="cyberDesc">449 дарс ва тестҳо</p>
+            <div class="course-info"><span data-i18n="stepByStep">📖 Шаг ба шаг</span><span>⭐ 4.8</span></div>
+            <button class="open-btn" data-i18n="openCourseBtn">Кушодани курс</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- MY LEARNING PAGE (Бо идоракунии динамикии пешрафт) -->
+    <!-- 3. MY LEARNING PAGE -->
     <section class="page" id="learning">
-      <h1 class="page-title" data-i18n="myLearning">📖 Омӯзиши ман</h1>
-      <p class="page-subtitle" data-i18n="learningSubtitle">Курсҳо ва дарсҳои оғозкардаи ту.</p>
-      <div class="learning-list" id="myLearningContainer">
-        <!-- Дар инҷо курсҳо ба таври худкор аз script.js илова мешаванд -->
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="learningTitle">📖 Омӯзиши ман</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="learningSub">Курсҳо ва дарсҳои оғозкардаи ту.</p>
+      <div class="learning-list" id="myLearningContainer"></div>
+    </section>
+
+    <!-- 4. GROUP CHAT FULL PAGE -->
+    <section class="page chat-page" id="groupchat">
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="groupChatTitle">💬 Чати гурӯҳӣ</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="groupChatSub">Бо дигар хонандагон муҳокима кунед ва фикрҳо мубодила намоед.</p>
+      
+      <div class="card chat-box-card">
+        <div class="reply-bar" id="groupReplyBar">
+          <span id="groupReplyText">Ҷавоб ба паём...</span>
+          <button onclick="cancelGroupReply()" style="background:none; border:none; color:var(--red); font-weight:bold; cursor:pointer;">✕</button>
+        </div>
+
+        <div id="groupChatHistory" style="flex:1; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;" onclick="closeGroupMenu()">
+          <div style="text-align:center; color:var(--muted); font-size:12px;" data-i18n="loadingMsgs">Боргирии паёмҳо...</div>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+          <input type="text" id="groupChatInput" class="form-input" placeholder="Паёми худро нависед..." data-i18n-ph="chatInputPh" style="margin:0;">
+          <button class="send-plane-btn" onclick="sendGroupMessage()" title="Фиристодан">✈️</button>
+        </div>
       </div>
     </section>
 
-    <!-- PROGRESS PAGE -->
+    <div id="groupContextMenu" class="msg-context-menu">
+      <button onclick="groupActionReply()" data-i18n="contextReply">💬 Ответить (Reply)</button>
+      <button onclick="groupActionEdit()" data-i18n="contextEdit">✏️ Изменить (Edit)</button>
+      <button onclick="groupActionDelete()" style="color:var(--red);" data-i18n="contextDelete">🗑️ Удалить / Отменить</button>
+    </div>
+
+    <!-- 5. TEACHER CONTACT FULL PAGE -->
+    <section class="page chat-page" id="teachercontact">
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="teacherTitle">👨‍🏫 Тамос бо устод</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="teacherSub">Саволҳои худро бевосита ба устод диҳед ва муоширати дутарафа дошта бошед.</p>
+      
+      <div class="card chat-box-card">
+        <div class="reply-bar" id="teacherReplyBar">
+          <span id="teacherReplyText">Ҷавоб ба паём...</span>
+          <button onclick="cancelTeacherReply()" style="background:none; border:none; color:var(--red); font-weight:bold; cursor:pointer;">✕</button>
+        </div>
+
+        <div id="teacherChatHistory" style="flex:1; background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px;" onclick="closeTeacherMenu()">
+          <div style="text-align:center; color:var(--muted); font-size:12px;" data-i18n="loadingMsgs">Боргирии паёмҳо...</div>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; flex-shrink: 0;">
+          <input type="text" id="teacherChatInput" class="form-input" placeholder="Савол ё паём ба устод..." data-i18n-ph="teacherInputPh" style="margin:0;">
+          <button class="send-plane-btn" onclick="sendTeacherMessage()" title="Фиристодан">✈️</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="teacherContextMenu" class="msg-context-menu">
+      <button onclick="teacherActionReply()" data-i18n="contextReply">💬 Ответить (Reply)</button>
+      <button onclick="teacherActionEdit()" data-i18n="contextEdit">✏️ Изменить (Edit)</button>
+      <button onclick="teacherActionDelete()" style="color:var(--red);" data-i18n="contextDelete">🗑️ Удалить / Отменить</button>
+    </div>
+
+    <!-- 6. ADMIN VIDEOS FULL PAGE -->
+    <section class="page" id="adminvideos">
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="adminVideoTitle">🎬 Видеодарсҳои Админ</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="adminVideoSub">Видеоҳо ва дастурҳои махсусе, ки аз тарафи админ намоиш дода мешаванд.</p>
+      
+      <div class="card" style="padding: 25px;">
+        <div id="studentAdminVideosList" style="display: flex; flex-direction: column; gap: 20px;">
+          <div style="text-align: center; color: var(--muted); font-size: 13px; padding: 25px;" data-i18n="loadingVideos">Боргирии видеоҳо...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. PROGRESS PAGE -->
     <section class="page" id="progress">
-      <h1 class="page-title" data-i18n="progress">📊 Пешрафт</h1>
-      <p class="page-subtitle" data-i18n="progressSubtitle">Пешрафти омӯзиши ту.</p>
-      <div class="progress-grid" id="progressContainer">
-        <!-- Пешрафтҳо ба таври динамикӣ -->
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="progressTitle">📊 Пешрафт</h1>
       </div>
+      <p class="page-subtitle" data-i18n="progressSub">Пешрафти умумии омӯзиши ту.</p>
+      <div class="progress-grid" id="progressContainer"></div>
     </section>
 
-    <!-- ACHIEVEMENTS PAGE -->
+    <!-- 8. ACHIEVEMENTS PAGE -->
     <section class="page" id="achievements">
-      <h1 class="page-title" data-i18n="achievements">🏆 Дастовардҳо</h1>
-      <p class="page-subtitle" data-i18n="achievementsSubtitle">Натиҷаҳо, XP, рейтинг ва лигаи ту.</p>
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="achievementsTitle">🏆 Дастовардҳо</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="achievementsSub">Натиҷаҳо, XP, рейтинг ва лигаи ту.</p>
       <div class="achievement-summary">
         <div class="card summary-card"><div class="summary-icon">⚡</div><small>XP</small><strong id="userXpDisplay">0</strong></div>
-        <div class="card summary-card"><div class="summary-icon">⭐</div><small data-i18n="score">Балл</small><strong>100%</strong></div>
-        <div class="card summary-card"><div class="summary-icon">🔥</div><small>Streak</small><strong>1 <span data-i18n="days">рӯз</span></strong></div>
-        <div class="card summary-card"><div class="summary-icon">🏅</div><small data-i18n="rating">Рейтинг</small><strong>#1</strong></div>
-      </div>
-      <div class="card league">
-        <div class="league-icon">🥇</div>
-        <div class="league-info">
-          <h2>Gold League</h2>
-          <p data-i18n="leagueText">Ту дар байни донишҷӯёни фаъол ҳастӣ.</p>
-          <div class="progress"><div style="width:10%"></div></div>
-        </div>
-        <div class="rank"><small data-i18n="position">Ҷойгоҳ</small><strong>#1</strong></div>
+        <div class="card summary-card"><div class="summary-icon">⭐</div><small data-i18n="scoreLabel">Балл</small><strong>100%</strong></div>
+        <div class="card summary-card"><div class="summary-icon">🔥</div><small data-i18n="streakLabel">Streak</small><strong data-i18n="streakVal">1 рӯз</strong></div>
+        <div class="card summary-card"><div class="summary-icon">🏅</div><small data-i18n="rankLabel">Рейтинг</small><strong>#1</strong></div>
       </div>
     </section>
 
-    <!-- CERTIFICATES PAGE -->
+    <!-- 9. CERTIFICATES PAGE -->
     <section class="page" id="certificates">
-      <h1 class="page-title" data-i18n="certificates">🎓 Сертификатҳо</h1>
-      <p class="page-subtitle" data-i18n="certSubtitle">Сертификатҳои омӯзишии ту.</p>
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="certTitle">🎓 Сертификатҳо</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="certSub">Сертификатҳои тахассусии ту.</p>
       <div class="cert-grid">
         <div class="card certificate">
           <div class="certificate-icon">🎓</div>
           <h2>HAYOT ACADEMY</h2>
-          <p data-i18n="certificateCompletion">HTML & CSS Certificate</p>
-          <h3 style="margin:15px 0">HTML & CSS Master Class</h3>
+          <p data-i18n="certDesc">Full-Stack & Programming Certificate</p>
+          <h3 style="margin:15px 0" data-i18n="certMaster">Master Developer Class</h3>
           <small>ID: HA-2026-001</small><br>
-          <button class="download-btn" onclick="downloadCertificate()" data-i18n="downloadCertificate">📥 Зеркашии сертификат</button>
+          <button class="download-btn" onclick="downloadCertificate()" data-i18n="certDownload">📥 Зеркашии сертификат</button>
         </div>
       </div>
     </section>
 
-    <!-- SETTINGS PAGE -->
+    <!-- 10. SETTINGS PAGE -->
     <section class="page" id="settings">
-      <h1 class="page-title" data-i18n="settings">⚙️ Танзимот</h1>
-      <p class="page-subtitle" data-i18n="settingsSubtitle">Ҳисоб ва намуди HAYOT ACADEMY-ро идора кун.</p>
-      <div class="settings">
-        <div class="settings-group">
-          <div class="settings-group-title" data-i18n="languageGroup">🌐 ЗАБОН</div>
-          <div class="language-card">
-            <div class="language-heading">
-              <div class="language-icon">🌐</div>
-              <div class="language-info">
-                <h3 data-i18n="chooseLanguage">Интихоби забон</h3>
-                <p data-i18n="languageDescription">Забони интерфейси HAYOT ACADEMY-ро интихоб кунед.</p>
-              </div>
-            </div>
-            <div class="custom-dropdown-container">
-              <button type="button" class="custom-dropdown-btn" id="languageButton" aria-expanded="false">
+      <div class="section-header-row">
+        <button class="back-page-btn" onclick="openPage('home')">←</button>
+        <h1 class="page-title" data-i18n="settingsTitle">⚙️ Танзимот</h1>
+      </div>
+      <p class="page-subtitle" data-i18n="settingsSub">Ҳисоб ва намуди интерфейсро идора кун.</p>
+      <div class="settings" style="max-width:820px">
+        <div class="card" style="padding:21px; margin-bottom:15px;">
+          <h3 data-i18n="langSectionHeader">🌐 Забони барнома (Language)</h3>
+          <p class="muted small" style="margin-bottom:15px;" data-i18n="langSectionSub">Забони дилхоҳи худро интихоб кунед.</p>
+          <div class="form-group" style="margin:0;">
+            <div class="custom-select-wrapper" id="customLangDropdown">
+              <div class="custom-select-trigger" onclick="toggleCustomDropdown()">
                 <span id="selectedLangText">🇹🇯 Тоҷикӣ</span>
-                <span id="languageArrow">⌄</span>
-              </button>
-              <div class="custom-dropdown-menu" id="languageMenu">
-                <button type="button" class="dropdown-item" data-lang="tg">🇹🇯 Тоҷикӣ</button>
-                <button type="button" class="dropdown-item" data-lang="ru">🇷🇺 Русский</button>
-                <button type="button" class="dropdown-item" data-lang="en">🇬🇧 English</button>
-                <button type="button" class="dropdown-item" data-lang="uz">🇺🇿 O‘zbekcha</button>
-                <button type="button" class="dropdown-item" data-lang="fa">🇮🇷 فارسی</button>
+                <span>▼</span>
+              </div>
+              <div class="custom-options" id="customLangOptions">
+                <div class="custom-option" onclick="selectAppLanguage('tg', '🇹🇯 Тоҷикӣ')">🇹🇯 Тоҷикӣ</div>
+                <div class="custom-option" onclick="selectAppLanguage('ru', '🇷🇺 Русский')">🇷🇺 Русский</div>
+                <div class="custom-option" onclick="selectAppLanguage('en', '🇬🇧 English')">🇬🇧 English</div>
+                <div class="custom-option" onclick="selectAppLanguage('fa', '🇮🇷 فارسی')">🇮🇷 فارسی</div>
               </div>
             </div>
           </div>
         </div>
-        
-        <div class="settings-group">
-          <div class="settings-group-title" data-i18n="accountGroup">👤 ҲИСОБ</div>
-          <div class="setting" onclick="openProfile()">
-            <div class="setting-left">
-              <div class="setting-icon">👤</div>
-              <div class="setting-text">
-                <b data-i18n="profile">Профил</b>
-                <small data-i18n="profileDescription">Ном, сурат ва маълумоти профил</small>
-              </div>
-            </div>
-            <div>›</div>
+
+        <div class="card" style="padding:21px; margin-bottom:15px;">
+          <h3 data-i18n="profileHeader">👤 Профили ман</h3>
+          <p class="muted small" style="margin-bottom:15px;" data-i18n="profileSub">Ном ва сурати профили худро иваз кунед.</p>
+          <div class="form-group">
+            <label data-i18n="nameLabel">Ном ва насаб</label>
+            <input type="text" id="settingsInputName" class="form-input" maxlength="60" value="Абдулло">
           </div>
+          <button class="primary-btn" onclick="saveSettingsProfile()" data-i18n="saveProfileBtn">Захира кардани профил</button>
         </div>
-        
-        <div class="settings-group">
-          <div class="settings-group-title" data-i18n="appearanceGroup">🎨 НАМУД</div>
-          <div class="setting" onclick="toggleDark()">
-            <div class="setting-left">
-              <div class="setting-icon">🌙</div>
-              <div class="setting-text">
-                <b data-i18n="theme">Ҳолати рӯзона ва шабона</b>
-                <small data-i18n="themeDescription">Иваз кардани ранги интерфейс</small>
-              </div>
-            </div>
-            <div class="switch" id="themeSwitch"></div>
-          </div>
-        </div>
-        
-        <div class="settings-group">
-          <div class="settings-group-title" data-i18n="accountGroup2">АККАУНТ</div>
-          <div class="setting" onclick="logout()" style="color:var(--red)">
-            <div class="setting-left">
-              <div class="setting-icon">🚪</div>
-              <div class="setting-text">
-                <b data-i18n="logout">Баромадан аз система</b>
-                <small data-i18n="logoutDescription">Аз ҳисоб баромадан</small>
-              </div>
-            </div>
-            <div>›</div>
-          </div>
+
+        <div class="card" style="padding:21px; border-color: rgba(239, 68, 68, 0.4);">
+          <h3 style="color: var(--red);" data-i18n="logoutHeader">🚪 Баромадан аз аккаунт</h3>
+          <p class="muted small" style="margin-bottom:15px;" data-i18n="logoutSub">Шумо метавонед аз ҳисоби худ бароед ва дубора ворид шавед.</p>
+          <button class="primary-btn" style="background: linear-gradient(135deg, var(--red), #dc2626);" onclick="logoutAccount()" data-i18n="logoutBtn">Баромадан (Logout)</button>
         </div>
       </div>
     </section>
@@ -338,11 +688,11 @@
 <div class="modal" id="courseModal">
   <div class="modal-box">
     <div class="modal-head">
-      <button class="back-btn" onclick="backToListOrCourse()" aria-label="Back">←</button>
+      <button class="back-btn" onclick="backToListOrCourse()">←</button>
       <h2 id="courseModalTitle">Course</h2>
     </div>
     <div id="courseLessonsContainer">
-      <p class="muted small" style="margin-bottom:14px" data-i18n="lessonIntro">Ҳар як курс аз дарсҳои пайдарпай иборат аст.</p>
+      <p class="muted small" style="margin-bottom:14px" data-i18n="modalHint">Ҳар як курс аз қадамҳо ва дарсҳои гуногун иборат аст. Танҳо дарси 1 кушода буда, дарсҳои оянда то иҷрои пешина қулф мебошанд 🔒.</p>
       <div id="courseLessons"></div>
     </div>
     <div id="lessonRunnerContainer" style="display:none">
@@ -350,18 +700,22 @@
         <div class="fcc-instructions">
           <h3 id="runnerLessonTitle" style="color:var(--primary2);margin-bottom:10px"></h3>
           <div id="runnerLessonDesc" class="muted small"></div>
-          <hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
-          <label class="muted small" data-i18n="exampleCode">НАМУНАИ КОД</label>
-          <code id="runnerLessonExample" style="display:block;overflow-wrap:anywhere;margin-top:8px;color:var(--editor-text)"></code>
+          
+          <div style="margin-top: 15px;">
+            <label class="muted small" style="display:block; margin-bottom:4px; font-weight:700; color:var(--accent);" data-i18n="exampleLabel">📌 НАМУНАИ КОД (EXAMPLE) — Барои дидан ва омӯхтан:</label>
+            <div id="runnerLessonExampleBox" class="example-code-box"></div>
+          </div>
         </div>
+
         <div class="fcc-editor-box">
-          <label class="muted small" data-i18n="codeEditor">МУҲАРРИРИ КОД</label>
-          <textarea id="codeEditor" class="fcc-textarea" data-i18n-placeholder="codePlaceholder" placeholder="Коди худро инҷо нависед..."></textarea>
-          <label class="muted small" data-i18n="preview">ПИШНАМОИШ</label>
-          <iframe id="codePreview" class="fcc-preview" title="Code preview" sandbox></iframe>
+          <label class="muted small" data-i18n="editorLabel">МУҲАРРИРИ КОД (Аз рӯи мафҳум ва шарҳи вазифа нависед)</label>
+          <textarea id="codeEditor" class="fcc-textarea" placeholder="Коди худро инҷо нависед..." data-i18n-ph="editorPh"></textarea>
+          
+          <label class="muted small" data-i18n="previewLabel">ПИШНАМОИШ (ПРЕДПРОСМОТР) — Иҷрои амали тегҳо</label>
+          <iframe id="codePreview" class="fcc-preview" title="Code preview" sandbox="allow-scripts"></iframe>
         </div>
       </div>
-      <button class="open-btn" style="margin-top:18px;background:var(--green)" onclick="checkCodeCompletion()" data-i18n="runCheck">Санҷиши код</button>
+      <button class="open-btn" style="margin-top:18px;background:var(--green)" onclick="checkCodeCompletion()" data-i18n="checkCodeBtn">Санҷиши код ва гузариш ба Дарси нав ➔</button>
     </div>
   </div>
 </div>
@@ -370,48 +724,1319 @@
 <div class="modal" id="profileModal">
   <div class="modal-box" style="max-width:600px">
     <div class="modal-head">
-      <h2 data-i18n="profileSettings">Танзимоти профил</h2>
-      <button class="close" onclick="closeProfile()" aria-label="Close">×</button>
+      <h2 data-i18n="profileSettingsTitle">Танзимоти профил</h2>
+      <button class="close" onclick="closeProfile()">×</button>
     </div>
     <div class="profile-header">
       <div class="profile-avatar-big" id="profileAvatarBig">👨‍💻</div>
       <div>
         <h2 id="profileNameDisplay">Абдулло</h2>
         <p class="muted small">Software Developer</p>
-        <p class="muted small" id="profileEmailDisplay"></p>
+        <p class="muted small" id="profileEmailDisplay">student@hayot.tj</p>
       </div>
     </div>
     <div class="form-group">
       <label data-i18n="nameLabel">Ном ва насаб</label>
-      <input type="text" id="inputName" class="form-input" maxlength="60">
+      <input type="text" id="inputName" class="form-input" maxlength="60" value="Абдулло">
     </div>
-    <div class="form-group">
-      <label data-i18n="avatarLabel">Сурати профил</label>
-      <div class="avatar-selector-grid">
-        <button type="button" class="emoji-option" onclick="setAvatarEmoji('👨‍💻')">👨‍💻</button>
-        <button type="button" class="emoji-option" onclick="setAvatarEmoji('🚀')">🚀</button>
-        <button type="button" class="emoji-option" onclick="setAvatarEmoji('💻')">💻</button>
-        <button type="button" class="emoji-option" onclick="setAvatarEmoji('⚡')">⚡</button>
-        <button type="button" class="emoji-option" onclick="setAvatarEmoji('🔥')">🔥</button>
-        <label class="upload-btn-option" title="Upload image">
-          📁<input type="file" id="imageUploadInput" accept="image/*" hidden>
-        </label>
-      </div>
-    </div>
-    <button class="open-btn" onclick="saveProfile()" data-i18n="saveProfile">Захира кардан</button>
+    <button class="open-btn" onclick="saveProfileModal()" data-i18n="saveBtn">Захира кардан</button>
   </div>
 </div>
 
+<!-- CUSTOM ALERT MODAL FOR ADMIN NOTIFICATIONS -->
 <div class="custom-alert-overlay" id="customAlertOverlay">
   <div class="custom-alert-box">
-    <div class="custom-alert-icon" id="customAlertIcon">🔔</div>
-    <div class="custom-alert-msg" id="customAlertMsg"></div>
-    <div class="custom-alert-actions" id="customAlertActions">
-      <button class="custom-alert-btn primary" id="customAlertOkBtn" onclick="hideCustomAlert()">OK</button>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px;">
+      <button onclick="hideCustomAlert()" style="background: rgba(255,255,255,0.08); border: 1.5px solid var(--border); width: 44px; height: 44px; border-radius: 12px; color: var(--text); font-size: 26px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer;">×</button>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <h3 style="font-size: 19px; font-weight: 700; color: var(--text);" data-i18n="adminNotifTitle">Огоҳиҳои Админ</h3>
+        <span style="font-size: 28px;" id="customAlertIcon">🔔</span>
+      </div>
+    </div>
+    <div id="customAlertMsg" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 5px;"></div>
+    <div style="margin-top: 15px; text-align: right;">
+      <button onclick="clearAllAdminNotifications()" style="background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); padding: 10px 18px; border-radius: 10px; font-weight: 600; cursor: pointer;" data-i18n="clearAllBtn">Тоза кардани ҳамааш</button>
     </div>
   </div>
 </div>
 
-<script src="script.js"></script>
+<script>
+  const COURSE_LESSON_LIMITS = {
+    "HTML": 199,
+    "CSS": 210,
+    "JavaScript": 210,
+    "Python": 419,
+    "AI": 349,
+    "Cybersecurity": 449
+  };
+
+  const translations = {
+    tg: {
+      splashSlogan: "HAYOT ACADEMY — платформаи онлайн барои омӯзиши барномасозӣ бо забони тоҷикӣ, русӣ, англисӣ ва эронӣ мебошад.",
+      authSub: "Бақайдгирии ном ва PIN-коди 4-рақама",
+      pinHint: "Рақами махфии худро гузоред",
+      authBtn: "Бақайдгирӣ ва Воридшавӣ",
+      menuStudy: "ОМӮЗИШ",
+      navHome: "Асосӣ",
+      navCourses: "Курсҳо",
+      navLearning: "Омӯзиши ман",
+      menuComm: "МУҲОКИМА ВА АЛОҚА",
+      navGroupChat: "Чати гурӯҳӣ",
+      navTeacher: "Тамос бо устод",
+      navAdminVideos: "Видеодарсҳои Админ",
+      menuResults: "НАТИҶАҲО",
+      navProgress: "Пешрафт",
+      navAchievements: "Дастовардҳо",
+      navCertificates: "Сертификатҳо",
+      menuSystem: "СИСТЕМА",
+      navSettings: "Танзимот",
+      heroTitle: "🚀 Омӯзиши Касбии Барномасозӣ дар HAYOT ACADEMY!",
+      heroDesc: "Ояндаи худро бо таълими муосир ва амалӣ соз!",
+      heroBtn: "Ҳамаи курсҳоро бибин",
+      topCourses: "🔥 Курсҳои пешсаф",
+      coursesTitle: "📚 Курсҳо",
+      coursesSub: "Курси дилхоҳатро интихоб кун ва омӯзишро оғоз намо.",
+      openCourseBtn: "Кушодани курс",
+      learningTitle: "📖 Омӯзиши ман",
+      learningSub: "Курсҳо ва дарсҳои оғозкардаи ту.",
+      groupChatTitle: "💬 Чати гурӯҳӣ",
+      groupChatSub: "Бо дигар хонандагон муҳокима кунед ва фикрҳо мубодила намоед.",
+      teacherTitle: "👨‍🏫 Тамос бо устод",
+      teacherSub: "Саволҳои худро бевосита ба устод диҳед ва муоширати дутарафа дошта бошед.",
+      adminVideoTitle: "🎬 Видеодарсҳои Админ",
+      adminVideoSub: "Видеоҳо ва дастурҳои махсусе, ки аз тарафи админ намоиш дода мешаванд.",
+      progressTitle: "📊 Пешрафт",
+      progressSub: "Пешрафти умумии омӯзиши ту.",
+      achievementsTitle: "🏆 Дастовардҳо",
+      achievementsSub: "Натиҷаҳо, XP, рейтинг ва лигаи ту.",
+      scoreLabel: "Балл",
+      streakLabel: "Streak",
+      streakVal: "1 рӯз",
+      rankLabel: "Рейтинг",
+      certTitle: "🎓 Сертификатҳо",
+      certSub: "Сертификатҳои тахассусии ту.",
+      certDesc: "Full-Stack & Programming Certificate",
+      certMaster: "Master Developer Class",
+      certDownload: "📥 Зеркашии сертификат",
+      settingsTitle: "⚙️ Танзимот",
+      settingsSub: "Ҳисоб ва намуди интерфейсро идора кун.",
+      langSectionHeader: "🌐 Забони барнома (Language)",
+      langSectionSub: "Забони дилхоҳи худро интихоб кунед.",
+      profileHeader: "👤 Профили ман",
+      profileSub: "Ном ва сурати профили худро иваз кунед.",
+      nameLabel: "Ном ва насаб",
+      saveProfileBtn: "Захира кардани профил",
+      logoutHeader: "🚪 Баромадан аз аккаунт",
+      logoutSub: "Шумо метавонед аз ҳисоби худ бароед ва дубора ворид шавед.",
+      logoutBtn: "Баромадан (Logout)",
+      modalHint: "Ҳар як курс аз қадамҳо ва дарсҳои гуногун иборат аст. Танҳо дарси 1 кушода буда, дарсҳои оянда то иҷрои пешина қулф мебошанд 🔒.",
+      editorLabel: "МУҲАРРИРИ КОД (Аз рӯи мафҳум ва шарҳи вазифа нависед)",
+      editorPh: "Коди худро инҷо нависед...",
+      previewLabel: "ПИШНАМОИШ (ПРЕДПРОСМОТР) — Иҷрои амали тегҳо",
+      exampleLabel: "📌 НАМУНАИ КОД (EXAMPLE) — Барои дидан ва омӯхтан:",
+      checkCodeBtn: "Санҷиши код ва гузариш ба Дарси нав ➔",
+      profileSettingsTitle: "Танзимоти профил",
+      saveBtn: "Захира кардан",
+      chatInputPh: "Паёми худро нависед...",
+      teacherInputPh: "Савол ё паём ба устод...",
+      searchPh: "🔎 Ҷустуҷӯи курс ё дарс...",
+      adminNotifTitle: "Огоҳиҳои Админ",
+      clearAllBtn: "Тоза кардани ҳамааш",
+      lessonPrefix: "Дарс",
+      statusDone: "✅ Иҷро шуд",
+      statusReady: "🔓 Омода",
+      statusLocked: "🔒 Қулф",
+      btnRepeat: "Такрор",
+      btnStart: "Оғоз",
+      lockedAlert: "⚠️ Ин дарс қулф аст! Аввал дарсҳои пешинаро бо хондани мафҳум ва иҷрои вазифа анҷом диҳед.",
+      emptyLessons: "⚠️ Дар ин забон ҳоло ягон дарс ворид нашудааст.",
+      htmlDesc: "199 дарс ва тестҳо",
+      cssDesc: "210 дарс ва тестҳо",
+      jsDesc: "210 дарс ва тестҳо",
+      pyDesc: "419 дарс ва тестҳо",
+      aiDesc: "349 дарс ва тестҳо",
+      cyberDesc: "449 дарс ва тестҳо",
+      stepByStep: "📖 Шаг ба шаг",
+      loadingMsgs: "Боргирии паёмҳо...",
+      loadingVideos: "Боргирии видеоҳо...",
+      contextReply: "💬 Ответить (Reply)",
+      contextEdit: "✏️ Изменить (Edit)",
+      contextDelete: "🗑️ Удалить / Отменить"
+    },
+    ru: {
+      splashSlogan: "HAYOT ACADEMY — платформа онлайн-обучения программированию.",
+      authSub: "Регистрация имени и 4-значного PIN-кода",
+      pinHint: "Введите секретный код",
+      authBtn: "Регистрация и вход",
+      menuStudy: "ОБУЧЕНИЕ",
+      navHome: "Главная",
+      navCourses: "Курсы",
+      navLearning: "Мое обучение",
+      menuComm: "ОБСУЖДЕНИЕ И СВЯЗЬ",
+      navGroupChat: "Групповой чат",
+      navTeacher: "Связь с учителем",
+      navAdminVideos: "Видеоуроки админа",
+      menuResults: "РЕЗУЛЬТАТЫ",
+      navProgress: "Прогресс",
+      navAchievements: "Достижения",
+      navCertificates: "Сертификаты",
+      menuSystem: "СИСТЕМА",
+      navSettings: "Настройки",
+      heroTitle: "🚀 Профессиональное обучение программированию в HAYOT ACADEMY!",
+      heroDesc: "Создайте свое будущее с современным и практичным образованием!",
+      heroBtn: "Смотреть все курсы",
+      topCourses: "🔥 Популярные курсы",
+      coursesTitle: "📚 Курсы",
+      coursesSub: "Выберите нужный курс и начните обучение.",
+      openCourseBtn: "Открыть курс",
+      learningTitle: "📖 Мое обучение",
+      learningSub: "Ваши текущие курсы и уроки.",
+      groupChatTitle: "💬 Групповой чат",
+      groupChatSub: "Обсуждайте и делитесь мыслями с другими студентами.",
+      teacherTitle: "👨‍🏫 Связь с учителем",
+      teacherSub: "Задавайте вопросы напрямую преподавателю.",
+      adminVideoTitle: "🎬 Видеоуроки админа",
+      adminVideoSub: "Специальные видео и инструкции от администратора.",
+      progressTitle: "📊 Прогресс",
+      progressSub: "Общий прогресс вашего обучения.",
+      achievementsTitle: "🏆 Достижения",
+      achievementsSub: "Ваши результаты, XP, рейтинг и лига.",
+      scoreLabel: "Баллы",
+      streakLabel: "Streak",
+      streakVal: "1 день",
+      rankLabel: "Рейтинг",
+      certTitle: "🎓 Сертификаты",
+      certSub: "Ваши квалификационные сертификаты.",
+      certDesc: "Full-Stack & Programming Certificate",
+      certMaster: "Master Developer Class",
+      certDownload: "📥 Скачать сертификат",
+      settingsTitle: "⚙️ Настройки",
+      settingsSub: "Управление аккаунтом и интерфейсом.",
+      langSectionHeader: "🌐 Язык программы (Language)",
+      langSectionSub: "Выберите желаемый язык.",
+      profileHeader: "👤 Мой профиль",
+      profileSub: "Измените свое имя и аватар.",
+      nameLabel: "Имя и фамилия",
+      saveProfileBtn: "Сохранить профиль",
+      logoutHeader: "🚪 Выход из аккаунта",
+      logoutSub: "Вы можете выйти из системы и войти снова.",
+      logoutBtn: "Выйти (Logout)",
+      modalHint: "Каждый курс состоит из последовательных шагов. Первый урок открыт, остальные заблокированы 🔒.",
+      editorLabel: "РЕДАКТОР КОДА",
+      editorPh: "Напишите ваш код здесь...",
+      previewLabel: "ПРЕДПРОСМОТР",
+      exampleLabel: "📌 ПРИМЕР КОДА (EXAMPLE):",
+      checkCodeBtn: "Проверить код и перейти к новому уроку ➔",
+      profileSettingsTitle: "Настройки профиля",
+      saveBtn: "Сохранить",
+      chatInputPh: "Введите ваше сообщение...",
+      teacherInputPh: "Вопрос или сообщение учителю...",
+      searchPh: "🔎 Поиск курса или урока...",
+      adminNotifTitle: "Уведомления админа",
+      clearAllBtn: "Очистить все",
+      lessonPrefix: "Урок",
+      statusDone: "✅ Выполнено",
+      statusReady: "🔓 Готов",
+      statusLocked: "🔒 Заблокирован",
+      btnRepeat: "Повторить",
+      btnStart: "Начать",
+      lockedAlert: "⚠️ Этот урок заблокирован! Сначала выполните предыдущие уроки.",
+      emptyLessons: "⚠️ На этом языке пока не добавлено ни одного урока.",
+      htmlDesc: "199 уроков и тестов",
+      cssDesc: "210 уроков и тестов",
+      jsDesc: "210 уроков и тестов",
+      pyDesc: "419 уроков и тестов",
+      aiDesc: "349 уроков и тестов",
+      cyberDesc: "449 уроков и тестов",
+      stepByStep: "📖 Пошагово",
+      loadingMsgs: "Загрузка сообщений...",
+      loadingVideos: "Загрузка видео...",
+      contextReply: "💬 Ответить (Reply)",
+      contextEdit: "✏️ Изменить (Edit)",
+      contextDelete: "🗑️ Удалить / Отменить"
+    },
+    en: {
+      splashSlogan: "HAYOT ACADEMY — an online programming learning platform.",
+      authSub: "Name & 4-Digit PIN Registration",
+      pinHint: "Enter your secure PIN",
+      authBtn: "Register & Login",
+      menuStudy: "LEARNING",
+      navHome: "Home",
+      navCourses: "Courses",
+      navLearning: "My Learning",
+      menuComm: "DISCUSSION & CONTACT",
+      navGroupChat: "Group Chat",
+      navTeacher: "Teacher Contact",
+      navAdminVideos: "Admin Video Lessons",
+      menuResults: "RESULTS",
+      navProgress: "Progress",
+      navAchievements: "Achievements",
+      navCertificates: "Certificates",
+      menuSystem: "SYSTEM",
+      navSettings: "Settings",
+      heroTitle: "🚀 Professional Programming Learning at HAYOT ACADEMY!",
+      heroDesc: "Build your future with modern and practical education!",
+      heroBtn: "View All Courses",
+      topCourses: "🔥 Top Courses",
+      coursesTitle: "📚 Courses",
+      coursesSub: "Choose your desired course and start learning.",
+      openCourseBtn: "Open Course",
+      learningTitle: "📖 My Learning",
+      learningSub: "Your courses and lessons.",
+      groupChatTitle: "💬 Group Chat",
+      groupChatSub: "Discuss and share ideas with other students.",
+      teacherTitle: "👨‍🏫 Teacher Contact",
+      teacherSub: "Ask questions directly to your teacher.",
+      adminVideoTitle: "🎬 Admin Video Lessons",
+      adminVideoSub: "Special videos and tutorials provided by the administrator.",
+      progressTitle: "📊 Progress",
+      progressSub: "Your overall learning progress.",
+      achievementsTitle: "🏆 Achievements",
+      achievementsSub: "Your results, XP, ranking and league.",
+      scoreLabel: "Score",
+      streakLabel: "Streak",
+      streakVal: "1 day",
+      rankLabel: "Ranking",
+      certTitle: "🎓 Certificates",
+      certSub: "Your professional certificates.",
+      certDesc: "Full-Stack & Programming Certificate",
+      certMaster: "Master Developer Class",
+      certDownload: "📥 Download Certificate",
+      settingsTitle: "⚙️ Settings",
+      settingsSub: "Manage your account and interface.",
+      langSectionHeader: "🌐 App Language",
+      langSectionSub: "Select your preferred language.",
+      profileHeader: "👤 My Profile",
+      profileSub: "Change your name and profile avatar.",
+      nameLabel: "Full Name",
+      saveProfileBtn: "Save Profile",
+      logoutHeader: "🚪 Account Logout",
+      logoutSub: "You can log out of your account and sign in again.",
+      logoutBtn: "Logout",
+      modalHint: "Each course consists of sequential steps. First lesson is open, others locked 🔒.",
+      editorLabel: "CODE EDITOR",
+      editorPh: "Write your code here...",
+      previewLabel: "PREVIEW",
+      exampleLabel: "📌 CODE EXAMPLE:",
+      checkCodeBtn: "Check Code & Next Lesson ➔",
+      profileSettingsTitle: "Profile Settings",
+      saveBtn: "Save",
+      chatInputPh: "Type your message...",
+      teacherInputPh: "Question or message to teacher...",
+      searchPh: "🔎 Search course or lesson...",
+      adminNotifTitle: "Admin Notifications",
+      clearAllBtn: "Clear All",
+      lessonPrefix: "Lesson",
+      statusDone: "✅ Completed",
+      statusReady: "🔓 Ready",
+      statusLocked: "🔒 Locked",
+      btnRepeat: "Repeat",
+      btnStart: "Start",
+      lockedAlert: "⚠️ This lesson is locked! Complete previous lessons first.",
+      emptyLessons: "⚠️ No lessons added in this language yet.",
+      htmlDesc: "199 lessons and tests",
+      cssDesc: "210 lessons and tests",
+      jsDesc: "210 lessons and tests",
+      pyDesc: "419 lessons and tests",
+      aiDesc: "349 lessons and tests",
+      cyberDesc: "449 lessons and tests",
+      stepByStep: "📖 Step by Step",
+      loadingMsgs: "Loading messages...",
+      loadingVideos: "Loading videos...",
+      contextReply: "💬 Ответить (Reply)",
+      contextEdit: "✏️ Изменить (Edit)",
+      contextDelete: "🗑️ Удалить / Отменить"
+    },
+    fa: {
+      splashSlogan: "HAYOT ACADEMY — پلتفرم آنلاین آموزش برنامه‌نویسی.",
+      authSub: "ثبت‌نام نام و رمز عبور ۴ رقمی (PIN)",
+      pinHint: "کد مخفی خود را وارد کنید",
+      authBtn: "ثبت‌نام و ورود",
+      menuStudy: "آموزش",
+      navHome: "خانه",
+      navCourses: "دوره‌ها",
+      navLearning: "آموزش‌های من",
+      menuComm: "گفتگو و ارتباط",
+      navGroupChat: "چت گروهی",
+      navTeacher: "ارتباط با استاد",
+      navAdminVideos: "ویدیوهای ادمین",
+      menuResults: "نتایج",
+      navProgress: "پیشرفت",
+      navAchievements: "دستاوردها",
+      navCertificates: "گواهینامه‌ها",
+      menuSystem: "سیستم",
+      navSettings: "تنظیمات",
+      heroTitle: "🚀 آموزش حرفه‌ای برنامه‌نویسی در HAYOT ACADEMY!",
+      heroDesc: "آینده خود را با آموزش مدرن و کاربردی بسازید!",
+      heroBtn: "مشاهده همه دوره‌ها",
+      topCourses: "🔥 دوره‌های برتر",
+      coursesTitle: "📚 دوره‌ها",
+      coursesSub: "دوره مورد نظر خود را انتخاب کرده و یادگیری را شروع کنید.",
+      openCourseBtn: "باز کردن دوره",
+      learningTitle: "📖 آموزش‌های من",
+      learningSub: "دوره‌ها و درس‌های شروع شده شما.",
+      groupChatTitle: "💬 چت گروهی",
+      groupChatSub: "با سایر فراگیران گفتگو کنید و نظرات خود را به اشتراک بگذارید.",
+      teacherTitle: "👨‍🏫 ارتباط با استاد",
+      teacherSub: "سوالات خود را مستقیماً از استاد بپرسید.",
+      adminVideoTitle: "🎬 ویدیوهای آموزشی ادمین",
+      adminVideoSub: "ویدیوها و دستورالعمل‌های ویژه‌ای که توسط مدیر ارائه شده است.",
+      progressTitle: "📊 پیشرفت",
+      progressSub: "پیشرفت کلی آموزش شما.",
+      achievementsTitle: "🏆 دستاوردها",
+      achievementsSub: "نتایج، XP، رتبه و لیگ شما.",
+      scoreLabel: "امتیاز",
+      streakLabel: "Streak",
+      streakVal: "۱ روز",
+      rankLabel: "رتبه",
+      certTitle: "🎓 گواهینامه‌ها",
+      certSub: "گواهینامه‌های تخصصی شما.",
+      certDesc: "Full-Stack & Programming Certificate",
+      certMaster: "Master Developer Class",
+      certDownload: "📥 دانلود گواهینامه",
+      settingsTitle: "⚙️ تنظیمات",
+      settingsSub: "مدیریت حساب کاربری و ظاهر رابط.",
+      langSectionHeader: "🌐 زبان برنامه (Language)",
+      langSectionSub: "زبان دلخواه خود را انتخاب کنید.",
+      profileHeader: "👤 پروفایل من",
+      profileSub: "نام و تصویر پروفایل خود را تغییر دهید.",
+      nameLabel: "نام و نام خانوادگی",
+      saveProfileBtn: "ذخیره پروفایل",
+      logoutHeader: "🚪 خروج از حساب",
+      logoutSub: "می‌توانید از حساب خود خارج شده و دوباره وارد شوید.",
+      logoutBtn: "خروج (Logout)",
+      modalHint: "هر دوره شامل گام‌های متوالی است. درس اول باز و بقیه قفل هستند 🔒.",
+      editorLabel: "ویرایشگر کد",
+      editorPh: "کد خود را اینجا بنویسید...",
+      previewLabel: "پیش‌نمایش",
+      exampleLabel: "📌 نمونه کد (EXAMPLE):",
+      checkCodeBtn: "بررسی کد و رفتن به درس جدید ➔",
+      profileSettingsTitle: "تنظیمات پروفایل",
+      saveBtn: "ذخیره",
+      chatInputPh: "پیام خود را بنویسید...",
+      teacherInputPh: "سوال یا پیام به استاد...",
+      searchPh: "🔎 جستجوی دوره یا درس...",
+      adminNotifTitle: "اعلان‌های ادمین",
+      clearAllBtn: "پاک کردن همه",
+      lessonPrefix: "درس",
+      statusDone: "✅ انجام شد",
+      statusReady: "🔓 آماده",
+      statusLocked: "🔒 قفل",
+      btnRepeat: "تکرار",
+      btnStart: "شروع",
+      lockedAlert: "⚠️ این درس قفل است! ابتدا درس‌های قبلی را کامل کنید.",
+      emptyLessons: "⚠️ هنوز درسی به این زبان اضافه نشده است.",
+      htmlDesc: "۱۹۹ درس و تست",
+      cssDesc: "۲۱۰ درس و تست",
+      jsDesc: "۲۱۰ درس و تست",
+      pyDesc: "۴۱۹ درس و تست",
+      aiDesc: "۳۴۹ درس و تست",
+      cyberDesc: "۴۴۹ درس و تست",
+      stepByStep: "📖 گام به گام",
+      loadingMsgs: "در حال بارگذاری پیام‌ها...",
+      loadingVideos: "در حال بارگذاری ویدیوها...",
+      contextReply: "💬 Ответить (Reply)",
+      contextEdit: "✏️ Изменить (Edit)",
+      contextDelete: "🗑️ Удалить / Отменить"
+    }
+  };
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAApd38FYbWjpzvcf5iZGOwAtyYynGjZi4",
+    authDomain: "hayot-01010101.firebaseapp.com",
+    projectId: "hayot-01010101",
+    storageBucket: "hayot-01010101.firebasestorage.app",
+    messagingSenderId: "617680807598",
+    appId: "1:617680807598:web:717574c097c3421251ef3f",
+    measurementId: "G-LSM0ZKPB3N"
+  };
+
+  if(!firebase.apps.length){
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.firestore();
+
+  let firebaseLessonsData = {};
+  let userProfile = { name: "Шогирд", email: "student@hayot.tj", pin: "", avatarVal: "👨‍💻", xp: 0 };
+  let currentLanguage = localStorage.getItem("hayotAppLang") || "tg";
+  let studentPrivateRoomId = localStorage.getItem("hayotStudentChatId") || ("student_" + (localStorage.getItem("hayotUserPin") || "0000"));
+
+  let unsubscribeGroupChat = null;
+  let unsubscribeTeacherChat = null;
+
+  let groupSelId = null, groupSelText = null, groupReplyText = null, groupEditId = null;
+  let teacherSelId = null, teacherSelText = null, teacherReplyText = null, teacherEditId = null;
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    const splash = document.getElementById("splashScreen");
+    if(splash) {
+      if(sessionStorage.getItem("hayotSplashShown")) {
+        splash.style.display = "none";
+      } else {
+        sessionStorage.setItem("hayotSplashShown", "true");
+        setTimeout(() => {
+          splash.style.opacity = "0";
+          splash.style.visibility = "hidden";
+          setTimeout(() => { splash.style.display = "none"; }, 800);
+        }, 10000);
+      }
+    }
+
+    loadUserProfile();
+
+    const langNames = { tg: "🇹🇯 Тоҷикӣ", ru: "🇷🇺 Русский", en: "🇬🇧 English", fa: "🇮🇷 فارسی" };
+    const langTextEl = document.getElementById("selectedLangText");
+    if(langTextEl && langNames[currentLanguage]) {
+      langTextEl.textContent = langNames[currentLanguage];
+    }
+
+    applyAppTranslations();
+
+    window.addEventListener("click", (e) => {
+      const dropdown = document.getElementById("customLangDropdown");
+      if(dropdown && !dropdown.contains(e.target)) {
+        document.getElementById("customLangOptions").classList.remove("open");
+      }
+    });
+
+    const registeredName = localStorage.getItem("hayotUserName");
+    const authScreen = document.getElementById("authScreen");
+    const loginNameInput = document.getElementById("loginName");
+
+    if(registeredName && loginNameInput) {
+      loginNameInput.value = registeredName;
+    }
+
+    const authFormMain = document.getElementById("authFormMain");
+    if(authFormMain) {
+      authFormMain.addEventListener("submit", async e => {
+        e.preventDefault(); 
+        const nameVal = document.getElementById("loginName").value.trim();
+        const pinVal = document.getElementById("loginPin").value.trim();
+
+        if(pinVal.length !== 4 || isNaN(pinVal)) {
+          alert("⚠️ PIN-код бояд айнан 4 рақам бошад!");
+          return;
+        }
+
+        studentPrivateRoomId = `student_${pinVal}`;
+        localStorage.setItem("hayotStudentChatId", studentPrivateRoomId);
+        localStorage.setItem("hayotUserPin", pinVal);
+        localStorage.setItem("hayotUserName", nameVal);
+
+        userProfile.name = nameVal;
+        userProfile.pin = pinVal;
+        saveUserProfile();
+
+        try {
+          await db.collection("students_contacts").doc(studentPrivateRoomId).set({
+            name: nameVal,
+            pin: pinVal,
+            chatRoomId: studentPrivateRoomId,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        } catch(err) { console.error(err); }
+
+        if(authScreen) { authScreen.classList.add("hidden"); authScreen.style.display = "none"; }
+        localStorage.setItem("hayotIsLoggedIn", "true");
+        initChats();
+      });
+    }
+
+    const isLoggedIn = localStorage.getItem("hayotIsLoggedIn");
+    if(isLoggedIn === "true" && authScreen) {
+      authScreen.classList.add("hidden");
+      authScreen.style.display = "none";
+      initChats();
+    }
+
+    await fetchAllLessonsFromFirebase();
+    loadStudentAdminVideosList();
+  });
+
+  function initChats() {
+    loadGroupChatMessages();
+    loadTeacherChatMessages();
+  }
+
+  function toggleCustomDropdown() {
+    document.getElementById("customLangOptions").classList.toggle("open");
+  }
+
+  async function selectAppLanguage(newLang, label) {
+    currentLanguage = newLang;
+    localStorage.setItem("hayotAppLang", newLang);
+    document.getElementById("selectedLangText").textContent = label;
+    document.getElementById("customLangOptions").classList.remove("open");
+    
+    applyAppTranslations();
+    await fetchAllLessonsFromFirebase();
+  }
+
+  function applyAppTranslations() {
+    const dict = translations[currentLanguage] || translations["tg"];
+    document.body.dir = (currentLanguage === "fa") ? "rtl" : "ltr";
+
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if(dict[key]) el.textContent = dict[key];
+    });
+
+    document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+      const key = el.getAttribute("data-i18n-ph");
+      if(dict[key]) el.placeholder = dict[key];
+    });
+  }
+
+  async function fetchAllLessonsFromFirebase() {
+    const courses = Object.keys(COURSE_LESSON_LIMITS);
+    const dict = translations[currentLanguage] || translations["tg"];
+
+    for (const course of courses) {
+      try {
+        const querySnapshot = await db.collection("courses").doc(`${course}_${currentLanguage}`).collection("lessons").get();
+
+        let loadedMap = {};
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data.lessonId) {
+              loadedMap[data.lessonId] = data;
+            }
+          });
+        }
+        
+        let fullList = [];
+        const limit = COURSE_LESSON_LIMITS[course] || 100;
+        for (let i = 1; i <= limit; i++) {
+          if (loadedMap[i]) {
+            fullList.push(loadedMap[i]);
+          } else {
+            fullList.push({
+              lessonId: i,
+              title: `${dict.lessonPrefix} ${i}`,
+              concept: dict.emptyLessons,
+              task: "Вазифаи ин қадамро иҷро кунед.",
+              example: `// Намуна барои дарси ${i}`
+            });
+          }
+        }
+        firebaseLessonsData[course] = fullList;
+      } catch (e) {
+        console.error(e);
+        firebaseLessonsData[course] = [];
+      }
+    }
+    updateMyLearningUI();
+    updateProgressUI();
+  }
+
+  function loadStudentAdminVideosList() {
+    const container = document.getElementById("studentAdminVideosList");
+    if(!container) return;
+    container.replaceChildren();
+
+    db.collection("admin_videos_journal").orderBy("timestamp", "desc").get().then((snapshot) => {
+      if(snapshot.empty) {
+        container.innerHTML = `<div style="text-align: center; color: var(--muted); font-size: 13px; padding: 25px;">Ҳоло ягон видеодарс аз тарафи админ илова нашудааст.</div>`;
+        return;
+      }
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const itemCard = document.createElement("div");
+        itemCard.style.cssText = "background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 15px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;";
+        
+        let videoUrl = (data.url || data.rawUrl || "").trim();
+        let videoEmbedHtml = "";
+        let platformName = "Видеодарс";
+        let platformSvg = "🎬";
+        let platformColor = "var(--primary2)";
+
+        if (videoUrl.includes("instagram.com")) {
+          platformName = "Instagram";
+          platformColor = "#E1306C";
+          platformSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>`;
+          
+          let parts = videoUrl.split("?")[0].split("/");
+          let shortCode = "";
+          for (let i = 0; i < parts.length; i++) {
+            if ((parts[i] === "p" || parts[i] === "reel" || parts[i] === "reels") && parts[i + 1]) {
+              shortCode = parts[i + 1];
+              break;
+            }
+          }
+          if (!shortCode && parts.length > 0) {
+            shortCode = parts[parts.length - 1] || parts[parts.length - 2];
+          }
+          if (shortCode) {
+            videoUrl = `https://www.instagram.com/p/${shortCode}/embed/captioned/?cr=1&v=14`;
+          } else if (!videoUrl.endsWith("/")) {
+            videoUrl = videoUrl + "/embed/";
+          } else {
+            videoUrl = videoUrl + "embed/";
+          }
+          videoEmbedHtml = `<div style="width: 100%; height: 420px; border-radius: 12px; overflow: hidden; background: #000; position: relative;"><iframe width="100%" height="100%" src="${videoUrl}" frameborder="0" scrolling="no" allowtransparency="true" style="width:100%; height:100%; border:none;"></iframe></div>`;
+        } 
+        else if (videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be")) {
+          platformName = "YouTube";
+          platformColor = "#FF0000";
+          platformSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+          
+          let videoId = "";
+          if (videoUrl.includes("watch?v=")) {
+            videoId = videoUrl.split("watch?v=")[1].split("&")[0];
+          } else if (videoUrl.includes("youtu.be/")) {
+            videoId = videoUrl.split("youtu.be/")[1].split("?")[0];
+          } else if (videoUrl.includes("/embed/")) {
+            videoId = videoUrl.split("/embed/")[1].split("?")[0];
+          } else if (videoUrl.includes("/shorts/")) {
+            videoId = videoUrl.split("/shorts/")[1].split("?")[0];
+          }
+
+          if (videoId) {
+            videoUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1&modestbranding=1&rel=0`;
+            videoEmbedHtml = `<div style="width: 100%; height: 380px; border-radius: 12px; overflow: hidden; background: #000; position: relative;"><iframe width="100%" height="100%" src="${videoUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%; height:100%; border:none;"></iframe></div>`;
+          } else {
+            videoEmbedHtml = `<div style="display:grid; place-items:center; height:200px; color:var(--muted); font-size:14px; text-align:center;">⚠️ Линки YouTube нодуруст аст</div>`;
+          }
+        } 
+        else if (videoUrl.includes("tiktok.com")) {
+          platformName = "TikTok";
+          platformColor = "#00f2fe";
+          platformSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 3.2 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.24-.1z"/></svg>`;
+          
+          let parts = videoUrl.split("?")[0].split("/");
+          let tiktokId = parts[parts.length - 1] || parts[parts.length - 2];
+          if (tiktokId && !isNaN(tiktokId)) {
+            videoUrl = `https://www.tiktok.com/embed/v2/${tiktokId}?autoplay=0`;
+            videoEmbedHtml = `<div style="width: 100%; height: 450px; border-radius: 12px; overflow: hidden; background: #000; position: relative;"><iframe width="100%" height="100%" src="${videoUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="width:100%; height:100%; border:none;"></iframe></div>`;
+          } else {
+            videoEmbedHtml = `<div style="width: 100%; height: 380px; border-radius: 12px; overflow: hidden; background: #000;"><iframe width="100%" height="100%" src="${videoUrl}" frameborder="0" style="width:100%; height:100%; border:none;"></iframe></div>`;
+          }
+        } 
+        else if (videoUrl.includes("threads.net")) {
+          platformName = "Threads";
+          platformColor = "#ffffff";
+          platformSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.186 24h-.007c-3.572-.025-6.234-1.207-7.904-3.513C2.864 18.52 2 15.632 2 12.023 2 8.414 2.864 5.526 4.275 3.536 5.945 1.23 8.607.048 12.179.023h.014c3.644.025 6.398 1.252 8.188 3.655 1.677 2.27 2.54 5.419 2.569 9.359v.475h-2.022v-.45c-.024-3.414-.731-6.079-2.1-7.925-1.464-1.98-3.83-2.991-7.037-3.011h-.007c-3.13.02-5.452.993-6.905 2.894-1.378 1.821-2.091 4.492-2.118 7.949.027 3.457.74 6.128 2.118 7.949 1.453 1.901 3.775 2.874 6.905 2.894h.014c2.812-.018 4.887-.723 6.155-2.103 1.096-1.194 1.684-2.935 1.748-5.176h2.046c-.078 2.766-.889 4.981-2.413 6.587C18.665 22.955 15.965 23.975 12.186 24zm4.218-12.784h-4.329v1.655h4.329c-.06 1.488-.564 2.613-1.498 3.339-.991.776-2.428 1.173-4.269 1.182h-.007c-2.433-.016-4.238-.813-5.367-2.37-1.026-1.41-1.551-3.522-1.56-6.29 0-2.768.534-4.88 1.56-6.29 1.129-1.557 2.934-2.354 5.367-2.37h.007c2.316.015 3.99.714 5.114 2.138 1.025 1.29 1.579 3.125 1.663 5.565z"/></svg>`;
+          
+          videoEmbedHtml = `<div style="width: 100%; height: 380px; border-radius: 12px; overflow: hidden; background: #000;"><iframe width="100%" height="100%" src="${videoUrl}" frameborder="0" style="width:100%; height:100%; border:none;"></iframe></div>`;
+        } 
+        else if (videoUrl.startsWith("http")) {
+          videoEmbedHtml = `<div style="width: 100%; height: 380px; border-radius: 12px; overflow: hidden; background: #000; position: relative;">
+            <video src="${videoUrl}" controls controlsList="nodownload" style="width:100%; height:100%; object-fit:contain; background:#000;"></video>
+          </div>`;
+        } else {
+          videoEmbedHtml = `<div style="display:grid; place-items:center; height:200px; color:var(--muted); font-size:14px; padding:20px; text-align:center;">⚠️ Линки видео нодуруст аст ё дастрас нест</div>`;
+        }
+
+        itemCard.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 15px; color: var(--text); font-weight: 750;">${escapeHtml(data.title || "Видеодарс")}</div>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: bold; color: ${platformColor}; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);">
+              ${platformSvg} ${platformName}
+            </span>
+          </div>
+          <div style="font-size: 11px; color: var(--accent); margin-bottom: 5px;">📅 Сана ва вақт: ${escapeHtml(data.time || data.date || 'Вақти номаълум')}</div>
+          ${videoEmbedHtml}
+        `;
+        container.appendChild(itemCard);
+      });
+    }).catch((err) => {
+      console.error(err);
+      container.innerHTML = `<div style="text-align: center; color: var(--red); font-size: 13px; padding: 25px;">Хатогӣ дар боргирии видеоҳо.</div>`;
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function loadUserProfile() {
+    try {
+      const saved = localStorage.getItem("hayotProfile");
+      if(saved) userProfile = JSON.parse(saved);
+      const savedName = localStorage.getItem("hayotUserName");
+      if(savedName) userProfile.name = savedName;
+    } catch(e) {}
+    updateProfileDisplay();
+  }
+
+  function updateProfileDisplay() {
+    document.getElementById("profileNameDisplay").textContent = userProfile.name;
+    document.getElementById("profileEmailDisplay").textContent = userProfile.email || "student@hayot.tj";
+    document.getElementById("profileAvatarBig").textContent = userProfile.avatarVal || "👨‍💻";
+    document.getElementById("topAvatar").textContent = userProfile.avatarVal || "👨‍💻";
+    document.getElementById("userXpDisplay").textContent = userProfile.xp || 0;
+    
+    const settingsName = document.getElementById("settingsInputName");
+    if(settingsName) settingsName.value = userProfile.name;
+  }
+
+  function saveUserProfile(){
+    try{ localStorage.setItem("hayotProfile", JSON.stringify(userProfile)); }catch(e){}
+    updateProfileDisplay();
+  }
+
+  window.saveSettingsProfile = function(){
+    const nameInput = document.getElementById("settingsInputName");
+    if(nameInput && nameInput.value.trim()){
+      userProfile.name = nameInput.value.trim();
+      localStorage.setItem("hayotUserName", userProfile.name);
+      saveUserProfile();
+      alert("✅ Профил бомуваффақият захира шуд!");
+    }
+  };
+
+  window.logoutAccount = function(){
+    if(confirm("Аз ҳисоби худ баромадан мехоҳед?")) {
+      localStorage.removeItem("hayotIsLoggedIn");
+      localStorage.removeItem("hayotUserPin");
+      localStorage.removeItem("hayotUserName");
+      localStorage.removeItem("hayotStudentChatId");
+      location.reload();
+    }
+  };
+
+  function getFullDateTime(){
+    const now = new Date();
+    return `${String(now.getDate()).padStart(2,'0')}.${String(now.getMonth()+1).padStart(2,'0')}.${now.getFullYear()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  }
+
+  const mainContentArea = document.getElementById("mainContentArea");
+  const pullIndicator = document.getElementById("pullRefreshIndicator");
+  const refreshText = document.getElementById("refreshText");
+  const screenLockOverlay = document.getElementById("screenLockOverlay");
+
+  let touchStartY = 0;
+  let isRefreshing = false;
+
+  mainContentArea.addEventListener("touchstart", (e) => {
+    if (isRefreshing) return;
+    if (mainContentArea.scrollTop <= 5) {
+      touchStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  mainContentArea.addEventListener("touchmove", (e) => {
+    if (isRefreshing || mainContentArea.scrollTop > 5) return;
+    const currentY = e.touches[0].clientY;
+    const pullDistance = currentY - touchStartY;
+
+    if (pullDistance > 0 && pullDistance < 220) {
+      pullIndicator.style.top = (pullDistance - 50) + "px";
+      if (pullDistance >= 93) {
+        refreshText.innerText = "Барои навсозӣ сар диҳед...";
+      } else {
+        refreshText.innerText = "Аз боло ба поён кашед...";
+      }
+    }
+  }, { passive: true });
+
+  mainContentArea.addEventListener("touchend", (e) => {
+    if (isRefreshing) return;
+    const pullDistance = parseInt(pullIndicator.style.top) || -60;
+
+    if (pullDistance >= 43) { 
+      isRefreshing = true;
+      pullIndicator.style.top = "20px";
+      refreshText.innerText = "Навсозӣ мешавад...";
+      screenLockOverlay.classList.add("active");
+
+      setTimeout(() => {
+        location.reload();
+      }, 800);
+    } else {
+      pullIndicator.style.top = "-60px";
+    }
+  });
+
+  /* --- LOGIC FOR GROUP CHAT --- */
+  function loadGroupChatMessages() {
+    const history = document.getElementById("groupChatHistory");
+    if(unsubscribeGroupChat) unsubscribeGroupChat();
+
+    unsubscribeGroupChat = db.collection("chats").doc("group_chat").collection("messages")
+      .orderBy("timestamp", "asc")
+      .onSnapshot((snapshot) => {
+        history.replaceChildren();
+        if(snapshot.empty) {
+          history.innerHTML = `<div style="text-align:center; color:var(--muted); font-size:12px;">Ягон паём нест. Муҳокимаро оғоз кунед!</div>`;
+          return;
+        }
+
+        snapshot.forEach((docSnap) => {
+          const msg = docSnap.data();
+          const isMe = msg.senderName.includes(userProfile.name) || msg.senderType === "student";
+          const bubble = document.createElement("div");
+          bubble.className = `msg-bubble ${isMe ? 'me' : 'other'}`;
+
+          let replyHtml = msg.replyTo ? `<div style="font-size:10px; border-left:2px solid #fff; padding-left:4px; margin-bottom:4px; opacity:0.8;">Ҷавоб ба: ${escapeHtml(msg.replyTo)}</div>` : '';
+
+          bubble.innerHTML = `
+            ${replyHtml}
+            <div style="font-size:11px; font-weight:bold; margin-bottom:2px; color:${isMe ? '#ffd166' : 'var(--primary2)'};">${escapeHtml(msg.senderName)}</div>
+            <div>${escapeHtml(msg.text)}</div>
+            <div class="msg-time">${escapeHtml(msg.timeStr || "")}</div>
+          `;
+
+          if(isMe) {
+            bubble.oncontextmenu = function(e) {
+              e.preventDefault();
+              openGroupMenu(e, docSnap.id, msg.text);
+            };
+          }
+          history.appendChild(bubble);
+        });
+        history.scrollTop = history.scrollHeight;
+      });
+  }
+
+  function openGroupMenu(e, id, text) {
+    groupSelId = id;
+    groupSelText = text;
+    const menu = document.getElementById("groupContextMenu");
+    menu.style.display = "flex";
+    menu.style.top = e.clientY + "px";
+    menu.style.left = e.clientX + "px";
+  }
+  function closeGroupMenu() { document.getElementById("groupContextMenu").style.display = "none"; }
+  function groupActionReply() {
+    groupReplyText = groupSelText;
+    document.getElementById("groupReplyText").innerText = "Ҷавоб ба: " + groupSelText;
+    document.getElementById("groupReplyBar").style.display = "flex";
+    closeGroupMenu();
+  }
+  function cancelGroupReply() {
+    groupReplyText = null;
+    document.getElementById("groupReplyBar").style.display = "none";
+  }
+  function groupActionEdit() {
+    groupEditId = groupSelId;
+    document.getElementById("groupChatInput").value = groupSelText;
+    closeGroupMenu();
+  }
+  async function groupActionDelete() {
+    if(confirm("Паём удалит/отменить отправку карда шавад?")) {
+      await db.collection("chats").doc("group_chat").collection("messages").doc(groupSelId).delete();
+    }
+    closeGroupMenu();
+  }
+
+  async function sendGroupMessage() {
+    const input = document.getElementById("groupChatInput");
+    const text = input.value.trim();
+    if(!text) return;
+
+    try {
+      if(groupEditId) {
+        await db.collection("chats").doc("group_chat").collection("messages").doc(groupEditId).update({ text: text });
+        groupEditId = null;
+      } else {
+        await db.collection("chats").doc("group_chat").collection("messages").add({
+          senderType: "student",
+          senderName: userProfile.name,
+          text: text,
+          replyTo: groupReplyText || null,
+          timeStr: getFullDateTime(),
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      input.value = "";
+      cancelGroupReply();
+    } catch(e) { alert("Хатогӣ дар фиристодани паём!"); }
+  }
+
+  /* --- LOGIC FOR TEACHER CONTACT CHAT --- */
+  function loadTeacherChatMessages() {
+    const history = document.getElementById("teacherChatHistory");
+    if(unsubscribeTeacherChat) unsubscribeTeacherChat();
+
+    unsubscribeTeacherChat = db.collection("chats").doc(studentPrivateRoomId).collection("messages")
+      .orderBy("timestamp", "asc")
+      .onSnapshot((snapshot) => {
+        history.replaceChildren();
+        if(snapshot.empty) {
+          history.innerHTML = `<div style="text-align:center; color:var(--muted); font-size:12px;">Саволи худро ба устод нависед!</div>`;
+          return;
+        }
+
+        snapshot.forEach((docSnap) => {
+          const msg = docSnap.data();
+          const isMe = (msg.senderType === "student" && !msg.senderName.includes("Устод"));
+          
+          const bubble = document.createElement("div");
+          bubble.className = `msg-bubble ${isMe ? 'me' : 'other'}`;
+
+          let replyHtml = msg.replyTo ? `<div style="font-size:10px; border-left:2px solid #fff; padding-left:4px; margin-bottom:4px; opacity:0.8;">Ҷавоб ба: ${escapeHtml(msg.replyTo)}</div>` : '';
+
+          bubble.innerHTML = `
+            ${replyHtml}
+            <div style="font-size:11px; font-weight:bold; margin-bottom:2px; color:${isMe ? '#ffd166' : 'var(--primary2)'};">${escapeHtml(msg.senderName)}</div>
+            <div>${escapeHtml(msg.text)}</div>
+            <div class="msg-time">${escapeHtml(msg.timeStr || "")}</div>
+          `;
+
+          if(isMe) {
+            bubble.oncontextmenu = function(e) {
+              e.preventDefault();
+              openTeacherMenu(e, docSnap.id, msg.text);
+            };
+          }
+          history.appendChild(bubble);
+        });
+        history.scrollTop = history.scrollHeight;
+      });
+  }
+
+  function openTeacherMenu(e, id, text) {
+    teacherSelId = id;
+    teacherSelText = text;
+    const menu = document.getElementById("teacherContextMenu");
+    menu.style.display = "flex";
+    menu.style.top = e.clientY + "px";
+    menu.style.left = e.clientX + "px";
+  }
+  function closeTeacherMenu() { document.getElementById("teacherContextMenu").style.display = "none"; }
+  function teacherActionReply() {
+    teacherReplyText = teacherSelText;
+    document.getElementById("teacherReplyText").innerText = "Ҷавоб ба: " + teacherSelText;
+    document.getElementById("teacherReplyBar").style.display = "flex";
+    closeTeacherMenu();
+  }
+  function cancelTeacherReply() {
+    teacherReplyText = null;
+    document.getElementById("teacherReplyBar").style.display = "none";
+  }
+  function teacherActionEdit() {
+    teacherEditId = teacherSelId;
+    document.getElementById("teacherChatInput").value = teacherSelText;
+    closeTeacherMenu();
+  }
+  async function teacherActionDelete() {
+    if(confirm("Паём удалит/отменить отправку карда шавад?")) {
+      await db.collection("chats").doc(studentPrivateRoomId).collection("messages").doc(teacherSelId).delete();
+    }
+    closeTeacherMenu();
+  }
+
+  async function sendTeacherMessage() {
+    const input = document.getElementById("teacherChatInput");
+    const text = input.value.trim();
+    if(!text) return;
+
+    try {
+      const contactRef = db.collection("students_contacts").doc(studentPrivateRoomId);
+      await contactRef.set({
+        name: userProfile.name,
+        pin: userProfile.pin || localStorage.getItem("hayotUserPin") || "0000",
+        chatRoomId: studentPrivateRoomId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      if(teacherEditId) {
+        await db.collection("chats").doc(studentPrivateRoomId).collection("messages").doc(teacherEditId).update({ text: text });
+        teacherEditId = null;
+      } else {
+        await db.collection("chats").doc(studentPrivateRoomId).collection("messages").add({
+          senderType: "student",
+          senderName: userProfile.name,
+          text: text,
+          replyTo: teacherReplyText || null,
+          timeStr: getFullDateTime(),
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      input.value = "";
+      cancelTeacherReply();
+    } catch(e) { alert("Хатогӣ дар фиристодани паём: " + e.message); }
+  }
+
+  window.renderNotificationsList = function(){
+    const msgContainer = document.getElementById("customAlertMsg");
+    msgContainer.replaceChildren();
+
+    db.collection("admin_notifications").orderBy("timestamp", "desc").get().then((snapshot) => {
+      if(snapshot.empty) {
+        const emptyDiv = document.createElement("div");
+        emptyDiv.style.cssText = "text-align: center; color: var(--muted); padding: 50px; font-size: 15px;";
+        emptyDiv.textContent = "Ягон огоҳии админ мавҷуд нест.";
+        msgContainer.appendChild(emptyDiv);
+        return;
+      }
+
+      snapshot.forEach((docSnap) => {
+        const item = docSnap.data();
+        const card = document.createElement("div");
+        card.style.cssText = "background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px;";
+        card.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--text); font-weight: 600;">
+            <span style="font-size: 20px;">📢</span>
+            <span>${escapeHtml(item.msg)}</span>
+          </div>
+          <div style="font-size: 12px; color: var(--muted); text-align: right;">📅 ${escapeHtml(item.time || '')}</div>
+        `;
+        msgContainer.appendChild(card);
+      });
+    }).catch(err => console.error(err));
+  };
+
+  window.clearAllAdminNotifications = function(){
+    document.getElementById("customAlertMsg").innerHTML = `<div style="text-align: center; color: var(--muted); padding: 50px; font-size: 15px;">Ягон огоҳии админ мавҷуд нест.</div>`;
+  };
+
+  window.notification = function(){ 
+    renderNotificationsList();
+    document.getElementById("customAlertOverlay").classList.add("show");
+  };
+
+  window.hideCustomAlert = function(){ 
+    document.getElementById("customAlertOverlay").classList.remove("show"); 
+  };
+
+  const navs = document.querySelectorAll(".nav");
+  const pages = document.querySelectorAll(".page");
+  navs.forEach(nav=>nav.addEventListener("click",()=>{
+    openPage(nav.dataset.page);
+    const sidebar = document.getElementById("sidebar");
+    if(sidebar) sidebar.classList.remove("open");
+  }));
+
+  window.openPage = function(id){
+    pages.forEach(p=>p.classList.toggle("active", p.id === id));
+    navs.forEach(n=>n.classList.toggle("active", n.dataset.page === id));
+    window.scrollTo(0,0);
+  };
+
+  window.toggleSidebar = function(){ document.getElementById("sidebar").classList.toggle("open"); };
+  window.toggleDark = function(){ document.body.classList.toggle("light"); };
+
+  let completedLessons = {};
+  let savedUserCodeHistory = {};
+  try {
+    completedLessons = JSON.parse(localStorage.getItem("hayotCompletedLessons") || "{}");
+    savedUserCodeHistory = JSON.parse(localStorage.getItem("hayotUserCodeHistory") || "{}");
+  } catch(e) {}
+
+  let activeCourseName="", activeLessonIndex=0;
+
+  window.openCourse = function(name){
+    activeCourseName = name;
+    document.getElementById("courseModalTitle").textContent = name + " — Дарсҳо";
+    showLessonsListView();
+    document.getElementById("courseModal").classList.add("show");
+  };
+
+  function showLessonsListView(){
+    document.getElementById("courseLessonsContainer").style.display="block";
+    document.getElementById("lessonRunnerContainer").style.display="none";
+    const list = document.getElementById("courseLessons");
+    list.replaceChildren();
+    
+    const dict = translations[currentLanguage] || translations["tg"];
+    const currentLessons = firebaseLessonsData[activeCourseName] || [];
+
+    if(currentLessons.length === 0){
+      const emptyMsg = document.createElement("div");
+      emptyMsg.style.cssText = "padding:25px; text-align:center; color:var(--red); font-size:14px; background:rgba(239,68,68,0.1); border-radius:12px; border:1px solid rgba(239,68,68,0.3);";
+      emptyMsg.textContent = dict.emptyLessons;
+      list.appendChild(emptyMsg);
+      return;
+    }
+    
+    currentLessons.forEach((lesson, index)=>{
+      const row = document.createElement("div");
+      const isCompleted = completedLessons[activeCourseName]?.[index];
+      const isUnlocked = (index === 0) || (completedLessons[activeCourseName]?.[index - 1] === true);
+
+      row.className = `modal-lesson ${isUnlocked ? '' : 'locked'}`;
+      
+      const statusText = isCompleted ? dict.statusDone : isUnlocked ? dict.statusReady : dict.statusLocked;
+      row.innerHTML = `<span><b>${dict.lessonPrefix} ${index + 1}:</b> ${escapeHtml(lesson.title || dict.lessonPrefix)} <br><small style="color:var(--muted);">${statusText}</small></span>`;
+      
+      const button = document.createElement("button");
+      if(isUnlocked) {
+        button.textContent = isCompleted ? dict.btnRepeat : dict.btnStart;
+        button.onclick = () => startLesson(index);
+      } else {
+        button.textContent = "🔒";
+        button.style.background = "var(--border)";
+        button.onclick = () => {
+          alert(dict.lockedAlert);
+        };
+      }
+      
+      row.appendChild(button);
+      list.appendChild(row);
+    });
+  }
+
+  window.startLesson = function(index){
+    activeLessonIndex = index;
+    const lesson = (firebaseLessonsData[activeCourseName] || [])[index];
+    const dict = translations[currentLanguage] || translations["tg"];
+    if(!lesson) return;
+    
+    document.getElementById("courseLessonsContainer").style.display="none";
+    document.getElementById("lessonRunnerContainer").style.display="block";
+    document.getElementById("runnerLessonTitle").textContent = `${dict.lessonPrefix} ${index + 1}: ${lesson.title}`;
+    
+    const descContainer = document.getElementById("runnerLessonDesc");
+    descContainer.replaceChildren();
+    descContainer.innerHTML = `
+      <div style="margin-bottom:12px; line-height:1.6;">
+        <strong style="color:var(--primary2);">💡 МАФҲУМ ВА ШАРҲ (CONCEPT):</strong><br>
+        <span>${escapeHtml(lesson.concept || "Мафҳуми ин дарс ба зудӣ илова мешавад.")}</span>
+      </div>
+      <div style='background:rgba(0,210,106,0.1); border-left:4px solid #00d26a; padding:12px; border-radius:6px; margin-top:10px;'>
+        <b style="color:#19b87a;">📌 ВАЗИФА (TASK):</b> <span style="color:#d0d8ef;">${escapeHtml(lesson.task || "Коди лозимиро нависед.")}</span>
+      </div>
+    `;
+
+    document.getElementById("runnerLessonExampleBox").textContent = lesson.example || "// Намунаи код барои дидан";
+
+    let defaultCode = "";
+    document.getElementById("codeEditor").value = savedUserCodeHistory[`${activeCourseName}_lesson_${index}`] || defaultCode;
+    updatePreview();
+  };
+
+  function updatePreview(){
+    const code = document.getElementById("codeEditor").value;
+    savedUserCodeHistory[`${activeCourseName}_lesson_${activeLessonIndex}`] = code;
+    try { localStorage.setItem("hayotUserCodeHistory", JSON.stringify(savedUserCodeHistory)); } catch(e) {}
+    
+    const previewFrame = document.getElementById("codePreview");
+    previewFrame.srcdoc = "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>" + code + "</body></html>";
+  }
+
+  document.getElementById("codeEditor").addEventListener("input", updatePreview);
+
+  window.backToListOrCourse = function(){
+    if(document.getElementById("lessonRunnerContainer").style.display==="block") {
+      showLessonsListView();
+    } else {
+      document.getElementById("courseModal").classList.remove("show");
+    }
+  };
+
+  window.checkCodeCompletion = function(){
+    const currentLessons = firebaseLessonsData[activeCourseName] || [];
+    const lesson = currentLessons[activeLessonIndex];
+    const userCode = document.getElementById("codeEditor").value.trim();
+
+    if(!userCode) {
+      alert("⚠️ Лутфан коди худро дар муҳаррир нависед!");
+      return;
+    }
+
+    const targetExample = (lesson.example || "").trim();
+    
+    if (targetExample && targetExample.startsWith("//") === false) {
+      const cleanUserCode = userCode.replace(/\s+/g, '');
+      const cleanTarget = targetExample.replace(/\s+/g, '');
+
+      if (cleanUserCode !== cleanTarget) {
+        alert("❌ Хатогӣ! Коди шумо бо талабот ва мафҳуми вазифа мувофиқат намекунад. Намунаро бодиққат бинед ва аз рӯи мафҳум дуруст нависед.");
+        return;
+      }
+    } else {
+      if (userCode.length < 3) {
+        alert("⚠️ Коди навишташуда хеле кӯтоҳ аст. Лутфан вазифаро пурра иҷро кунед.");
+        return;
+      }
+    }
+
+    if(lesson){
+      if(!completedLessons[activeCourseName]) completedLessons[activeCourseName] = {};
+      completedLessons[activeCourseName][activeLessonIndex] = true;
+      userProfile.xp = (userProfile.xp || 0) + 70;
+      
+      try {
+        localStorage.setItem("hayotCompletedLessons", JSON.stringify(completedLessons));
+        saveUserProfile();
+      } catch(e) {}
+
+      alert("🎉 Табрик! Код аз рӯи мафҳум дуруст санҷида шуд ва ба дарси нав гузаштед 🔓");
+      
+      if(activeLessonIndex + 1 < currentLessons.length) {
+        startLesson(activeLessonIndex + 1);
+      } else {
+        showLessonsListView();
+      }
+      updateMyLearningUI();
+      updateProgressUI();
+    }
+  };
+
+  function updateMyLearningUI() {
+    const container = document.getElementById("myLearningContainer");
+    if(!container) return;
+    container.replaceChildren();
+
+    const icons = { "HTML": "🌐", "CSS": "🎨", "JavaScript": "⚡", "Python": "🐍", "AI": "🤖", "Cybersecurity": "🛡️" };
+    Object.keys(firebaseLessonsData).forEach(courseKey => {
+      const totalLessons = firebaseLessonsData[courseKey].length;
+      if (totalLessons === 0) return;
+      const doneCount = Object.keys(completedLessons[courseKey] || {}).length;
+      const percent = Math.round((doneCount / totalLessons) * 100);
+
+      const card = document.createElement("div");
+      card.className = "card learning-card";
+      card.onclick = () => openCourse(courseKey);
+      card.innerHTML = `
+        <div class="learning-icon">${icons[courseKey] || "📚"}</div>
+        <div class="learning-info">
+          <h3>${courseKey} Course</h3>
+          <p>${doneCount} / ${totalLessons} lessons (${percent}%)</p>
+          <div class="progress"><div style="width:${percent}%"></div></div>
+        </div>
+        <button class="open-btn" style="width:auto">${percent > 0 ? "Continue" : "Start"}</button>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function updateProgressUI() {
+    const container = document.getElementById("progressContainer");
+    if(!container) return;
+    container.replaceChildren();
+
+    Object.keys(firebaseLessonsData).forEach(courseKey => {
+      const totalLessons = firebaseLessonsData[courseKey].length;
+      if (totalLessons === 0) return;
+      const doneCount = Object.keys(completedLessons[courseKey] || {}).length;
+      const percent = Math.round((doneCount / totalLessons) * 100);
+
+      const card = document.createElement("div");
+      card.className = "card progress-card";
+      card.innerHTML = `
+        <h2>📖 ${courseKey} Course</h2>
+        <div class="progress-row">
+          <div class="progress-row-head"><span>${doneCount} / ${totalLessons} lessons</span><b>${percent}%</b></div>
+          <div class="progress"><div style="width:${percent}%"></div></div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  window.openProfile = function(){
+    document.getElementById("inputName").value = userProfile.name;
+    document.getElementById("profileModal").classList.add("show");
+  };
+  window.closeProfile = function(){ document.getElementById("profileModal").classList.remove("show"); };
+  window.saveProfileModal = function(){
+    const name = document.getElementById("inputName").value.trim();
+    if(name) {
+      userProfile.name = name;
+      localStorage.setItem("hayotUserName", name);
+      saveUserProfile();
+    }
+    closeProfile();
+  };
+
+  window.downloadCertificate = function(){ alert("Сертификати шумо омода аст!"); };
+</script>
 </body>
 </html>
+
